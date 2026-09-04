@@ -6,7 +6,7 @@ All notable changes follow Semantic Versioning.
 
 - Generalize project documentation.
 - Add structured bug-report and feature-request templates.
-- Add dependency review, Dependabot, and OpenSSF Scorecard automation.
+- Add dependency review, Dependabot, OpenSSF Scorecard, and hash-locked CI installs.
 
 ## 1.0.0 - 2026-09-04
 
