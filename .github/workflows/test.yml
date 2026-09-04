@@ -24,7 +24,7 @@ jobs:
           data = yaml.safe_load(pathlib.Path('extension.yml').read_text())
           assert data['schema_version'] == '1.0'
           assert data['extension']['id'] == 'aee'
-          assert data['extension']['version'] == '1.0.0'
+          assert data['extension']['version'] == '1.0.1'
           assert len(data['provides']['commands']) == 5
           for command in data['provides']['commands']:
               assert pathlib.Path(command['file']).is_file(), command['file']
@@ -32,4 +32,3 @@ jobs:
       - run: ruff check scripts tests
       - run: pytest -q
       - run: python scripts/python/run_aee.py --help
-

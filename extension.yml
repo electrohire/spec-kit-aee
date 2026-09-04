@@ -3,7 +3,7 @@ schema_version: '1.0'
 extension:
   id: aee
   name: Applied Epistemic Engineering
-  version: 1.0.0
+  version: 1.0.1
   description: Challenge claims, trace evidence, propagate uncertainty, and route epistemic failures between Spec Kit phases
   category: process
   effect: read-write
@@ -89,4 +89,3 @@ tags:
   - provenance
   - uncertainty
   - governance
-

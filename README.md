@@ -1,8 +1,11 @@
 # Applied Epistemic Engineering for Spec Kit
 
+[![Test](https://github.com/electrohire/spec-kit-aee/actions/workflows/test.yml/badge.svg)](https://github.com/electrohire/spec-kit-aee/actions/workflows/test.yml)
+[![CodeQL](https://github.com/electrohire/spec-kit-aee/actions/workflows/codeql.yml/badge.svg)](https://github.com/electrohire/spec-kit-aee/actions/workflows/codeql.yml)
+
 `spec-kit-aee` applies evidence-centered claim engineering to Spec-Driven Development. It turns explicit requirements, assumptions, hypotheses, decisions, and compliance claims into a challengeable claim graph; distinguishes observations from assertions; preserves contradictions; propagates weakest-link uncertainty; proposes bounded recovery work; and emits results that conform to ElectroHire's [Evaluator Contract](https://github.com/electrohire/spec-kit-evaluator).
 
-This is the Spec Kit successor to the standalone AEE component first explored in SpecSmith. The implementation is a new ElectroHire design split into two deliberate layers:
+The implementation is an original ElectroHire design split into two deliberate layers:
 
 - [`applied-epistemic-engineering`](https://github.com/electrohire/applied-epistemic-engineering) owns the Python model, deterministic engine, CLI, and ledger.
 - `spec-kit-aee` is the thin lifecycle adapter, command surface, hooks, and evaluator-result integration.
@@ -30,7 +33,7 @@ specify extension add evaluator --from https://github.com/electrohire/spec-kit-e
 Then install this community extension from its pinned release:
 
 ```bash
-specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.0.0.zip
+specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.0.1.zip
 ```
 
 The Spec Kit community catalog is discovery-only. The explicit `--from` URL above makes the install source unambiguous.
