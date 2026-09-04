@@ -55,7 +55,7 @@ Use stable IDs in a specification:
 Then run:
 
 ```text
-__SPECKIT_COMMAND_AEE_ASSESS__ phase=after_specify artifact=specs/001-search/spec.md
+/speckit.aee.assess phase=after_specify artifact=specs/001-search/spec.md
 ```
 
 The assessment is stored under `.specify/extensions/aee/assessments/`; the shared result is stored under `.specify/extensions/evaluator/results/`. A claim without inspectable evidence remains unsupported even when generated prose says it passed.
@@ -70,7 +70,7 @@ The assessment is stored under `.specify/extensions/aee/assessments/`; the share
 | `speckit.aee.verify` | Verify ledger integrity |
 | `speckit.aee.gate` | Return CI-friendly exit status from an assessment |
 
-Compose AEE with other evaluators using `__SPECKIT_COMMAND_EVALUATOR_COMPOSE__`, render it with `__SPECKIT_COMMAND_EVALUATOR_REPORT__`, or use `__SPECKIT_COMMAND_EVALUATOR_ROUTE__` for the next-phase model recommendation.
+Compose AEE with other evaluators using `/speckit.evaluator.compose`, render it with `/speckit.evaluator.report`, or use `/speckit.evaluator.route` for the next-phase model recommendation. Invocation separators vary by integration; Spec Kit renders the installed command files appropriately.
 
 ## Files written
 
@@ -98,4 +98,3 @@ See [SECURITY.md](SECURITY.md) for the trust boundary and [CHANGELOG.md](CHANGEL
 ## License
 
 MIT © 2026 ElectroHire Inc.
-
