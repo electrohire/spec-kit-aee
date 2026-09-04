@@ -1,0 +1,92 @@
+schema_version: '1.0'
+
+extension:
+  id: aee
+  name: Applied Epistemic Engineering
+  version: 1.0.0
+  description: Challenge claims, trace evidence, propagate uncertainty, and route epistemic failures between Spec Kit phases
+  category: process
+  effect: read-write
+  author: ElectroHire
+  repository: https://github.com/electrohire/spec-kit-aee
+  license: MIT
+  homepage: https://github.com/electrohire/spec-kit-aee
+
+requires:
+  speckit_version: '>=1.0.0'
+  tools:
+    - name: aee
+      required: true
+      version: '>=1.0.0'
+  commands:
+    - speckit.evaluator.run
+    - speckit.evaluator.compose
+    - speckit.evaluator.report
+    - speckit.evaluator.route
+
+provides:
+  commands:
+    - name: speckit.aee.assess
+      file: commands/speckit.aee.assess.md
+      description: Assess explicit claims and emit both a rich AEE assessment and an Evaluator Contract result
+    - name: speckit.aee.challenge
+      file: commands/speckit.aee.challenge.md
+      description: Adversarially challenge atomicity, boundaries, falsifiability, dependencies, and evidence independence
+    - name: speckit.aee.trace
+      file: commands/speckit.aee.trace.md
+      description: Render the claim dependency graph and inspect epistemic provenance
+    - name: speckit.aee.verify
+      file: commands/speckit.aee.verify.md
+      description: Verify the tamper-evident AEE ledger without claiming that its contents are true
+    - name: speckit.aee.gate
+      file: commands/speckit.aee.gate.md
+      description: Apply a CI-friendly decision gate to an AEE assessment
+  templates:
+    - name: aee-claims
+      file: templates/aee-claims.json
+      description: Structured claim and evidence input for the AEE engine
+  config:
+    - name: aee-config.yml
+      template: templates/aee-config.template.yml
+      description: AEE thresholds, ledger behavior, and lifecycle settings
+      required: false
+  scripts:
+    - name: aee-runner
+      file: scripts/python/run_aee.py
+      description: Path-safe adapter for the applied-epistemic-engineering CLI
+      runtimes:
+        - python
+
+hooks:
+  after_specify:
+    command: speckit.aee.assess
+    priority: 30
+    optional: true
+    prompt: Run an epistemic assessment of the specification?
+    description: Challenge requirements, assumptions, boundaries, and evidence after specification
+  after_plan:
+    command: speckit.aee.assess
+    priority: 30
+    optional: true
+    prompt: Run an epistemic assessment of the plan?
+    description: Challenge plan claims, decisions, dependencies, and supporting evidence
+  after_tasks:
+    command: speckit.aee.assess
+    priority: 30
+    optional: true
+    prompt: Run an epistemic assessment of the task breakdown?
+    description: Challenge task traceability and the evidence required to verify completion
+  after_implement:
+    command: speckit.aee.assess
+    priority: 30
+    optional: true
+    prompt: Run an epistemic assessment of the implementation?
+    description: Compare implementation claims with independently inspectable evidence
+
+tags:
+  - epistemics
+  - evidence
+  - provenance
+  - uncertainty
+  - governance
+

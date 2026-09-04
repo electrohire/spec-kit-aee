@@ -1,0 +1,17 @@
+schema_version: '1.0'
+
+# Claims below this transparent score require recovery before passing.
+threshold: 0.70
+
+# Keep the SHA-256 chain on by default. This proves record continuity, not truth.
+ledger:
+  enabled: true
+  actor: spec-kit-aee
+
+# Lifecycle hooks remain optional and ask before running.
+phases:
+  after_specify: true
+  after_plan: true
+  after_tasks: true
+  after_implement: true
+

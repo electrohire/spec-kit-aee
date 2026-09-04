@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "claims": [
+    {
+      "id": "REQ-LATENCY-001",
+      "text": "Search responds within 250 ms",
+      "kind": "requirement",
+      "status": "supported",
+      "boundary": ["Production", "p95", "50 requests/second"],
+      "depends_on": [],
+      "conflicts_with": [],
+      "falsification_tests": [
+        "A 30-minute load test observes p95 latency above 250 ms"
+      ],
+      "source_ref": "spec.md#REQ-LATENCY-001",
+      "uncertainty": "low",
+      "evidence": [
+        {
+          "ref": "reports/load-test.json",
+          "kind": "observed",
+          "direction": "supports",
+          "source_quality": "test",
+          "description": "Observed p95 latency was 213 ms",
+          "source_id": "load-test-2026-09-04"
+        }
+      ]
+    }
+  ]
+}
+
