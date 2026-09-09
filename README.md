@@ -33,7 +33,7 @@ specify extension add evaluator --from https://github.com/electrohire/spec-kit-e
 Then install this community extension from its pinned release:
 
 ```bash
-specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.0.1.zip
+specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.0.0.zip
 ```
 
 The Spec Kit community catalog is discovery-only. The explicit `--from` URL above makes the install source unambiguous.

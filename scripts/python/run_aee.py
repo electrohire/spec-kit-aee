@@ -33,6 +33,13 @@ def parser() -> argparse.ArgumentParser:
 
     gate = sub.add_parser("gate")
     gate.add_argument("--input", type=Path, required=True)
+
+    gaps = sub.add_parser("gaps")
+    gaps.add_argument("--matrix", type=Path, required=True)
+    gaps.add_argument("--evidence", type=Path, required=True)
+    gaps.add_argument("--output", type=Path)
+    gaps.add_argument("--close")
+    gaps.add_argument("--existing", type=Path)
     return root
 
 
@@ -58,7 +65,42 @@ def main(argv: list[str] | None = None) -> int:
         return subprocess.run(
             [executable, "gate", "--input", str(value)], check=False
         ).returncode
+    if args.command == "gaps":
+        return _gaps(executable, root, args)
     raise AssertionError("unreachable")
+
+
+def _gaps(executable: str, root: Path, args: argparse.Namespace) -> int:
+    matrix = _safe_existing(root, args.matrix)
+    evidence = _safe_dir(root, args.evidence)
+    command = [
+        executable,
+        "gaps",
+        "--matrix",
+        str(matrix),
+        "--evidence",
+        str(evidence),
+    ]
+    if args.close:
+        command.extend(["--close", args.close])
+    if args.existing:
+        existing = _safe_existing(root, args.existing)
+        command.extend(["--existing", str(existing)])
+    if args.output:
+        output = _safe_output(root, args.output)
+        command.extend(["--output", str(output)])
+    completed = subprocess.run(command, check=False)
+    if args.output:
+        print(
+            json.dumps(
+                {
+                    "gaps": output.relative_to(root).as_posix(),
+                    "aee_exit_code": completed.returncode,
+                },
+                indent=2,
+            )
+        )
+    return completed.returncode
 
 
 def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
@@ -143,6 +185,16 @@ def _safe_existing(root: Path, value: Path) -> Path:
     _require_inside(root, resolved)
     if not resolved.is_file():
         raise ValueError(f"not a regular file: {value}")
+    return resolved
+
+
+def _safe_dir(root: Path, value: Path) -> Path:
+    candidate = value if value.is_absolute() else root / value
+    _reject_symlink_chain(root, candidate)
+    resolved = candidate.resolve(strict=True)
+    _require_inside(root, resolved)
+    if not resolved.is_dir():
+        raise ValueError(f"not a directory: {value}")
     return resolved
 
 

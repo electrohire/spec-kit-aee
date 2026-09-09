@@ -14,4 +14,12 @@ phases:
   after_plan: true
   after_tasks: true
   after_implement: true
+  after_verify: true
+
+# Gap register configuration.
+# The gap register is regenerated automatically after verification runs.
+gap_register:
+  matrix_path: docs/verification-matrix.md
+  evidence_dir: evidence
+  output_path: .noerelay/GAPS.md
 

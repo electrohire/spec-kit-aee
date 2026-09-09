@@ -3,7 +3,7 @@ schema_version: '1.0'
 extension:
   id: aee
   name: Applied Epistemic Engineering
-  version: 1.0.1
+  version: 1.0.0
   description: Challenge claims, trace evidence, propagate uncertainty, and route epistemic failures between Spec Kit phases
   category: process
   effect: read-write
@@ -41,6 +41,9 @@ provides:
     - name: speckit.aee.gate
       file: commands/speckit.aee.gate.md
       description: Apply a CI-friendly decision gate to an AEE assessment
+    - name: speckit.aee.gaps
+      file: commands/speckit.aee.gaps.md
+      description: Generate or update the gap register from a verification matrix and test evidence
   templates:
     - name: aee-claims
       file: templates/aee-claims.json
@@ -82,6 +85,12 @@ hooks:
     optional: true
     prompt: Run an epistemic assessment of the implementation?
     description: Compare implementation claims with independently inspectable evidence
+  after_verify:
+    command: speckit.aee.gaps
+    priority: 40
+    optional: true
+    prompt: Regenerate the gap register from verification evidence?
+    description: Cross-reference the verification matrix against test evidence and update GAPS.md
 
 tags:
   - epistemics
