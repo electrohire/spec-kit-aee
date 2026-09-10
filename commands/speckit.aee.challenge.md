@@ -12,9 +12,13 @@ Challenge explicit claims for observability, atomicity, boundaries, falsifiabili
 $ARGUMENTS
 ```
 
-Resolve `artifact=<path>` and optional `phase=<phase>` using the same prerequisites and path rules as `__SPECKIT_COMMAND_AEE_ASSESS__`. Run the AEE adapter's `assess` operation, then focus the response on failure modes rather than aggregate scoring.
+Resolve `artifact=<path>` and optional `phase=<phase>` using the same prerequisites and path rules as `__SPECKIT_COMMAND_AEE_ASSESS__`. Run the AEE adapter's `challenge` operation, which emits a deterministic failure-mode projection (failures plus bounded recovery proposals) rather than aggregate scoring.
 
-For every failure, report:
+```bash
+python .specify/extensions/aee/scripts/python/run_aee.py challenge --input <artifact> --phase <phase>
+```
+
+For every failure in the emitted projection, report:
 
 - stable failure and claim IDs;
 - the deterministic challenge that triggered;
