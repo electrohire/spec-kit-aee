@@ -25,6 +25,13 @@ def parser() -> argparse.ArgumentParser:
     assess.add_argument("--actor", default="spec-kit-aee")
     assess.add_argument("--no-ledger", action="store_true")
 
+    challenge = sub.add_parser("challenge")
+    challenge.add_argument("--input", type=Path, required=True)
+    challenge.add_argument("--phase", default="after_plan")
+    challenge.add_argument("--threshold", type=float, default=0.70)
+    challenge.add_argument("--project")
+    challenge.add_argument("--actor", default="spec-kit-aee")
+
     graph = sub.add_parser("graph")
     graph.add_argument("--input", type=Path, required=True)
 
@@ -56,6 +63,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.command == "assess":
         return _assess(executable, root, args)
+    if args.command == "challenge":
+        return _challenge(executable, root, args)
     if args.command == "graph":
         return _graph(executable, root, args)
     if args.command == "verify":
@@ -146,6 +155,42 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
                 "assessment": assessment.relative_to(root).as_posix(),
                 "evaluator_result": evaluator.relative_to(root).as_posix(),
                 "ledger": ledger.relative_to(root).as_posix() if ledger else None,
+                "aee_exit_code": completed.returncode,
+            },
+            indent=2,
+        )
+    )
+    return completed.returncode
+
+
+def _challenge(executable: str, root: Path, args: argparse.Namespace) -> int:
+    source = _safe_existing(root, args.input)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    phase = _safe_segment(args.phase)
+    output = _safe_output(
+        root, Path(f".specify/extensions/aee/challenges/aee-{phase}-{stamp}.json")
+    )
+    command = [
+        executable,
+        "challenge",
+        "--input",
+        str(source),
+        "--project",
+        args.project or root.name,
+        "--phase",
+        phase,
+        "--threshold",
+        str(args.threshold),
+        "--output",
+        str(output),
+        "--actor",
+        args.actor,
+    ]
+    completed = subprocess.run(command, check=False)
+    print(
+        json.dumps(
+            {
+                "challenge": output.relative_to(root).as_posix(),
                 "aee_exit_code": completed.returncode,
             },
             indent=2,
