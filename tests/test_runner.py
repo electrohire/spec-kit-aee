@@ -4,6 +4,7 @@ import importlib.util
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -70,7 +71,7 @@ def test_challenge_subparser_is_registered() -> None:
 
 def test_challenge_end_to_end(tmp_path: Path) -> None:
     if shutil.which("aee") is None:
-        pytest.skip("aee executable is not available")
+        pytest.fail("Install requirements/dev.txt and activate its environment: aee is required")
     root = tmp_path / "project"
     root.mkdir()
     claims = root / "claims.json"
@@ -97,7 +98,7 @@ def test_challenge_end_to_end(tmp_path: Path) -> None:
     )
     completed = subprocess.run(
         [
-            "python",
+            sys.executable,
             str(RUNNER),
             "--project-root",
             str(root),
