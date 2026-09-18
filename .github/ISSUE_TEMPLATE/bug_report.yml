@@ -24,7 +24,7 @@ body:
     id: versions
     attributes:
       label: Versions
-      description: Include the extension, Spec Kit, Python, and AEE package versions.
+      description: Include the AEE extension, Evaluator extension, Spec Kit, Python, and applied-epistemic-engineering package versions.
     validations:
       required: true
   - type: input

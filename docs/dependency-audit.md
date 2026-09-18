@@ -63,7 +63,7 @@ and gap generation from empty and passing synthetic test fixtures.
 
 The existing public AEE v1.0.0 archive was downloaded without authentication:
 SHA-256 `7be7e11549ae7f9ebfee740af7f61d5b16098f68d89cc454ce51d0134cc18399`.
-Its tag and content remain unchanged. A catalog-only dependency correction can
+The downloaded release also passed the six-operation installation smoke with the current engine. Its tag and content remain unchanged. A catalog-only dependency correction can
 point at this release; the source patch needs a later reviewed 1.0.1 release.
 Consult the PR checks for the final commit's CI, CodeQL, and dependency review.
 OpenSSF Scorecard is a main/scheduled workflow, not a PR-head check.
@@ -76,3 +76,5 @@ not newly implemented by this documentation/metadata patch. They are documented
 so new users can make informed choices. Generated files must be inspected and
 protected appropriately. Green tests and static scans do not certify correctness
 of claims, independence of evidence, or absence of every defect.
+
+The first expanded CI run caught a Linux-only executable-bit lint failure on the new smoke script. Its Git executable mode was corrected; no check was removed or weakened. Python dependency update monitoring and the bug-report dependency version prompts were also reviewed.
