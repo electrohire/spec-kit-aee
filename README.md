@@ -80,7 +80,7 @@ make no model API calls. Your chosen coding agent has its own inference setup.
 The [step-by-step walkthrough](docs/usage.md) covers all six commands, expected
 exit codes, output files, gap evidence format, and recovery. Start with the
 unsupported-claim template; replace its example requirement with your own and add
-real evidence only after inspecting it. Copying a template is not evidence.
+real evidence only after inspecting it. The published v1.0.0 template still contains an illustrative load-test observation: remove that example evidence and set the claim to draft before using it. This unreleased patch supplies the empty-evidence template. Copying either template is not evidence.
 
 The runner currently reads **CLI flags, not `aee-config.yml` or environment
 configuration overrides**. The installed YAML is a reference for agent/operator

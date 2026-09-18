@@ -78,3 +78,5 @@ protected appropriately. Green tests and static scans do not certify correctness
 of claims, independence of evidence, or absence of every defect.
 
 The first expanded CI run caught a Linux-only executable-bit lint failure on the new smoke script. Its Git executable mode was corrected; no check was removed or weakened. Python dependency update monitoring and the bug-report dependency version prompts were also reviewed.
+
+The final release smoke also installed both dependencies directly with the documented `specify extension add ... --from <published-url>` commands and exercised all six operations. The catalog-only correction is [Spec Kit issue #4626](https://github.com/github/spec-kit/issues/4626); the source patch is [AEE PR #6](https://github.com/electrohire/spec-kit-aee/pull/6). The walkthrough distinguishes the legacy release template from the pending safer template.

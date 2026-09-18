@@ -8,8 +8,7 @@ needed for these deterministic adapter operations.
 
 Copy `.specify/extensions/aee/templates/aee-claims.json` to `claims.json`. Use
 `cp` on macOS/Linux or `Copy-Item` in PowerShell. Edit the stable ID, requirement,
-boundary, and falsification test for your project. The template intentionally has
-no evidence. It should ask for recovery; a passing outcome is not the goal of this
+boundary, and falsification test for your project. In this unreleased patch the template intentionally has no evidence. If you installed published v1.0.0, first replace its illustrative `evidence` list with `[]`, set `status` to `draft`, and set `uncertainty` to `insufficient_evidence`. Do not retain the sample load-test observation as your own result. The resulting unsupported claim should ask for recovery; a passing outcome is not the goal of this
 first smoke check.
 
 ```bash
