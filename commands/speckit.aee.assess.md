@@ -36,6 +36,20 @@ Report the outcome, confidence threshold, claim/finding counts, unresolved contr
 
 When other evaluators ran at the same phase, recommend `__SPECKIT_COMMAND_EVALUATOR_COMPOSE__ phase=<phase> strategy=strict`.
 
+## Claim field vocabulary
+
+The AEE engine validates every claim with `Claim.from_dict` and rejects the
+whole bundle on the first invalid value. Use exactly these lowercase values;
+`id` must be non-empty, and `confidence`, when present, must be between 0 and 1.
+
+- `kind`: observation, requirement, assumption, inference, hypothesis, decision, prediction, compliance
+- `status`: draft, supported, partially_supported, unsupported, contradicted, unverifiable, superseded
+- `uncertainty`: none, low, medium, high, insufficient_evidence
+- `severity`: critical, high, medium, low, info
+- evidence `kind`: observed, inferred, asserted, contradicted, unsupported
+- evidence `direction`: supports, contradicts, context
+- evidence `source_quality`: primary, secondary, tertiary, artifact, test, human, model, unknown
+
 ## Guardrails
 
 - Assess only claims with stable IDs; do not silently convert free prose into claims.

@@ -8,6 +8,9 @@ All notable changes follow Semantic Versioning.
 - Replace the unsupported `requires.commands` field with explicit installation guidance; dependencies are informational and are not auto-installed by Spec Kit.
 - Add newcomer setup, configuration limitations, troubleshooting, and a link to the benchmark's measured results and failures.
 - Install the actual engine in hash-locked CI, validate with Spec Kit's own manifest parser, and exercise every adapter operation without silently skipping missing-engine integration tests.
+- Document the exact AEE claim field vocabulary in `speckit.aee.assess` so agents emit schema-valid claims on the first attempt.
+- Trim the extension description to under 100 characters per the Spec Kit extension publishing guide.
+- Add deterministic `extension.yml` and documentation compliance tests.
 
 ## 1.0.0 - 2026-09-09
 
