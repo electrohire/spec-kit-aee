@@ -2,6 +2,12 @@
 
 All notable changes follow Semantic Versioning.
 
+## Unreleased
+
+- Document the exact AEE claim field vocabulary in `speckit.aee.assess` so agents emit schema-valid claims on the first attempt.
+- Trim the extension description to under 100 characters per the Spec Kit extension publishing guide.
+- Add deterministic `extension.yml` and documentation compliance tests.
+
 ## 1.0.0 - 2026-09-09
 
 - Add six Spec Kit AEE commands and five optional lifecycle hooks.

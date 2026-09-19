@@ -4,7 +4,7 @@ extension:
   id: aee
   name: Applied Epistemic Engineering
   version: 1.0.0
-  description: Challenge claims, trace evidence, propagate uncertainty, and route epistemic failures between Spec Kit phases
+  description: Challenge claims, trace evidence, propagate uncertainty, and route epistemic failures across phases
   category: process
   effect: read-write
   author: ElectroHire
