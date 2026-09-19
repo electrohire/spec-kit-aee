@@ -16,9 +16,11 @@ Accept `artifact=<path>`, `phase=<after_specify|after_plan|after_tasks|after_imp
 
 ## Prerequisites
 
-1. Confirm the `aee` command is available and reports version 1.x. If absent, stop and recommend `python -m pip install "applied-epistemic-engineering>=1.0.0,<2"`.
-2. Confirm the Evaluator Contract is installed at `.specify/extensions/evaluator/`. If absent, stop and recommend installing `evaluator` before this extension.
+1. Confirm the `aee` command is available and reports version >=1.0.2,<2. If absent, stop and recommend `python -m pip install "applied-epistemic-engineering>=1.0.2,<2"`.
+2. Confirm Evaluator Contract 1.x from https://github.com/electrohire/spec-kit-evaluator is installed at `.specify/extensions/evaluator/`. If absent, stop and recommend `specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.0.0.zip` before this extension.
 3. Resolve the project root and source artifact. Never follow symlinks or read outside the project root.
+
+Use threshold `0.70` when omitted. The adapter does not load YAML configuration; pass explicit flags for overrides. The engine repository is https://github.com/electrohire/applied-epistemic-engineering.
 
 ## Execution
 

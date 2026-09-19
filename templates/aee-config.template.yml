@@ -1,3 +1,5 @@
+# Reference settings only: run_aee.py does not load this file.
+# Translate choices to explicit CLI flags; see docs/usage.md.
 schema_version: '1.0'
 
 # Claims below this transparent score require recovery before passing.
@@ -17,9 +19,10 @@ phases:
   after_verify: true
 
 # Gap register configuration.
-# The gap register is regenerated automatically after verification runs.
+# The optional after_verify hook requires a host workflow that emits the event.
+# Pass --matrix, --evidence, and --output explicitly.
 gap_register:
   matrix_path: docs/verification-matrix.md
   evidence_dir: evidence
-  output_path: .noerelay/GAPS.md
+  output_path: GAPS.md
 

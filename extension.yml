@@ -3,8 +3,8 @@ schema_version: '1.0'
 extension:
   id: aee
   name: Applied Epistemic Engineering
-  version: 1.0.0
-  description: Challenge claims, trace evidence, propagate uncertainty, and route epistemic failures between Spec Kit phases
+  version: 1.0.1
+  description: Challenge claims, trace evidence, and route epistemic failures between Spec Kit phases
   category: process
   effect: read-write
   author: ElectroHire
@@ -15,14 +15,20 @@ extension:
 requires:
   speckit_version: '>=1.0.0'
   tools:
+    - name: python
+      required: true
+      version: '>=3.11'
+    # CLI supplied by https://github.com/electrohire/applied-epistemic-engineering
+    # 1.0.2 introduced the gaps command used by this extension.
     - name: aee
       required: true
-      version: '>=1.0.0'
-  commands:
-    - speckit.evaluator.run
-    - speckit.evaluator.compose
-    - speckit.evaluator.report
-    - speckit.evaluator.route
+      version: '>=1.0.2,<2'
+    # Spec Kit extension, not a shell executable. Install it first; Spec Kit
+    # displays requires.tools but does not auto-install these dependencies.
+    # https://github.com/electrohire/spec-kit-evaluator
+    - name: spec-kit-evaluator
+      required: true
+      version: '>=1.0.0,<2'
 
 provides:
   commands:
