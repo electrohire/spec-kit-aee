@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
     executable = shutil.which("aee")
     if executable is None:
         print(
-            "Missing required 'aee' command. Install applied-epistemic-engineering>=1.0.0,<2.",
+            "Missing required 'aee' command. Install applied-epistemic-engineering>=1.0.2,<2.",
             file=sys.stderr,
         )
         return 2

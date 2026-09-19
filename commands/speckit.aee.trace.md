@@ -4,7 +4,7 @@ description: "Render claim dependencies and inspect epistemic provenance"
 
 # AEE Trace
 
-Render the dependency/conflict structure for explicit claims and inspect whether evidence and provenance references resolve.
+Render the declared dependency/conflict structure for explicit claims. Manually inspect whether evidence and provenance references resolve; graph generation does not fetch or validate those references.
 
 ## User input
 
