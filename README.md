@@ -117,6 +117,8 @@ The assessment is stored under `.specify/extensions/aee/assessments/`; the share
 | `speckit.aee.verify` | Verify ledger integrity |
 | `speckit.aee.gate` | Return CI-friendly exit status from an assessment |
 | `speckit.aee.gaps` | Generate or update the gap register from a verification matrix and test evidence |
+| `speckit.aee.route-evidence` | Route oversized logs and sources into raw evidence slices for AEE gates |
+| `speckit.aee.report-savings` | Report measured RTK and Headroom token savings, never estimated |
 
 Compose AEE with other evaluators using `/speckit.evaluator.compose`, render it with `/speckit.evaluator.report`, or use `/speckit.evaluator.route` for the next-phase model recommendation. Invocation separators vary by integration; Spec Kit renders the installed command files appropriately.
 
@@ -127,6 +129,9 @@ Compose AEE with other evaluators using `/speckit.evaluator.compose`, render it 
 ├── assessments/aee-<phase>-<timestamp>.json
 ├── challenges/aee-<phase>-<timestamp>.json
 ├── graphs/aee-claims-<timestamp>.mmd
+├── evidence/route notes with file paths, line ranges, and backend used
+├── reports/measured token-savings reports
+├── telemetry/shell-calls.jsonl
 └── ledger/epistemic-ledger.jsonl
 
 .specify/extensions/evaluator/results/
