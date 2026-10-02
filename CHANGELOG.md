@@ -2,7 +2,28 @@
 
 All notable changes follow Semantic Versioning.
 
-## 1.0.1 - Unreleased
+## 1.1.0 - Unreleased
+
+- Integrate the token-economy policy into AEE core: declare optional `rtk`,
+  `headroom`, `token-router`, and `ollama` tools; add `speckit.aee.route-evidence`
+  (local triage to raw slices; assess gates reason over slices only, never over
+  router prose) and `speckit.aee.report-savings` (measured-only, RTK and Headroom
+  reported separately, never estimated or double-counted). The tools stay external
+  runtimes; AEE cores the policy and degrades gracefully when a tool is absent.
+- Add `scripts/python/aee_token_economy.py` (tool status, evidence routing with
+  deterministic fallback, measured savings aggregation, shell telemetry wrapper)
+  with fail-closed secret-file refusal and path safety mirroring `run_aee.py`.
+- Document headroom integration points for long-horizon sessions
+  (`docs/token-economy.md`): proxy/wrap/SharedContext hook-in points and the hard
+  rule that gates see raw slices, never compressed summaries.
+- Fix the branch's own checks to match the surface it ships: manifest tests and
+  `check_install.py` now assert eight commands and the required/optional tool
+  split (they still asserted the 1.0.1 surface and failed).
+- Token-router discovery anchors on `--project-root`, not the caller's working
+  directory; the `shell` wrapper validates `--telemetry` before running the
+  wrapped command instead of raising after its side effects.
+
+## 1.0.1 - 2026-09-23
 
 - Declare Python, AEE engine 1.0.2 (needed for `gaps`), and Evaluator Contract dependencies using Spec Kit's documented tool metadata.
 - Replace the unsupported `requires.commands` field with explicit installation guidance; dependencies are informational and are not auto-installed by Spec Kit.

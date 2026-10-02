@@ -3,7 +3,7 @@ schema_version: '1.0'
 extension:
   id: aee
   name: Applied Epistemic Engineering
-  version: 1.0.1
+  version: 1.1.0
   description: Challenge claims, trace evidence, propagate uncertainty, and route epistemic failures across phases
   category: process
   effect: read-write
@@ -29,6 +29,23 @@ requires:
     - name: spec-kit-evaluator
       required: true
       version: '>=1.0.0,<2'
+    # Optional token-economy tools. AEE cores the policy (measured-only
+    # savings, cite-original-lines evidence) and depends on the tools; every
+    # workflow degrades gracefully when one is absent. Informational only:
+    # Spec Kit does not auto-install these dependencies.
+    # rtk: https://github.com/rtk-ai/rtk - shell-output compression.
+    - name: rtk
+      required: false
+    # headroom: https://github.com/headroomlabs-ai/headroom - long-horizon
+    # session compression. See docs/token-economy.md for integration points.
+    - name: headroom
+      required: false
+    # token-router: https://github.com/sleeplesshan/token-router - local
+    # Ollama line router for evidence gathering.
+    - name: token-router
+      required: false
+    - name: ollama
+      required: false
 
 provides:
   commands:
@@ -50,6 +67,12 @@ provides:
     - name: speckit.aee.gaps
       file: commands/speckit.aee.gaps.md
       description: Generate or update the gap register from a verification matrix and test evidence
+    - name: speckit.aee.route-evidence
+      file: commands/speckit.aee.route-evidence.md
+      description: Route oversized logs and sources into raw evidence slices for AEE gates
+    - name: speckit.aee.report-savings
+      file: commands/speckit.aee.report-savings.md
+      description: Report measured RTK and Headroom token savings, never estimated
   templates:
     - name: aee-claims
       file: templates/aee-claims.json
@@ -63,6 +86,11 @@ provides:
     - name: aee-runner
       file: scripts/python/run_aee.py
       description: Path-safe adapter for the applied-epistemic-engineering CLI
+      runtimes:
+        - python
+    - name: aee-token-economy
+      file: scripts/python/aee_token_economy.py
+      description: Policy layer over optional token-economy tools (rtk, headroom, token-router)
       runtimes:
         - python
 
