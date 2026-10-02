@@ -21,15 +21,17 @@ def test_manifest_uses_supported_dependency_metadata() -> None:
     requires = manifest.data["requires"]
     assert "commands" not in requires
     tools = {tool["name"]: tool for tool in requires["tools"]}
-    assert set(tools) == {"python", "aee", "spec-kit-evaluator"}
-    assert all(tool["required"] for tool in tools.values())
+    required = {name for name, tool in tools.items() if tool["required"]}
+    optional = {name for name, tool in tools.items() if not tool["required"]}
+    assert required == {"python", "aee", "spec-kit-evaluator"}
+    assert optional == {"rtk", "headroom", "token-router", "ollama"}
     assert "1.0.2" in SpecifierSet(tools["aee"]["version"])
     assert "1.0.1" not in SpecifierSet(tools["aee"]["version"])
     for group in ("commands", "templates", "scripts", "config"):
         for item in manifest.data["provides"][group]:
             assert (ROOT / item.get("file", item.get("template", ""))).is_file()
     names = {command["name"] for command in manifest.commands}
-    assert len(names) == 6
+    assert len(names) == 8
     assert len(manifest.hooks) == 5
     assert all(hook["command"] in names for hook in manifest.hooks.values())
 

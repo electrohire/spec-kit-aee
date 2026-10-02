@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
     root = args.project_root.resolve(strict=True)
     _reject_symlink_chain(root, root)
     if args.command == "status":
-        return _status(args)
+        return _status(root, args)
     if args.command == "route":
         return _route(root, args)
     if args.command == "report":
@@ -115,14 +115,20 @@ def main(argv: list[str] | None = None) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _find_token_router() -> Path | None:
-    """Locate the optional token-router backend without vendoring it."""
+def _find_token_router(root: Path) -> Path | None:
+    """Locate the optional token-router backend without vendoring it.
+
+    Discovery anchors on the project root (and its parent, for a
+    sibling checkout), never on the caller's working directory — the
+    tool accepts --project-root, so results must not depend on where
+    the agent happens to invoke it from.
+    """
     env_home = os.environ.get("TOKEN_ROUTER_HOME")
     candidates: list[Path] = []
     if env_home:
         candidates.append(Path(env_home) / "scripts" / "router.py")
-    candidates.append(Path.cwd() / "token-router" / "scripts" / "router.py")
-    candidates.append(Path.cwd().parent / "token-router" / "scripts" / "router.py")
+    candidates.append(root / "token-router" / "scripts" / "router.py")
+    candidates.append(root.parent / "token-router" / "scripts" / "router.py")
     for candidate in candidates:
         try:
             if candidate.is_file():
@@ -132,13 +138,13 @@ def _find_token_router() -> Path | None:
     return None
 
 
-def tool_status() -> dict:
+def tool_status(root: Path) -> dict:
     """Availability of each optional tool. Never raises when tools are absent."""
     status: dict = {}
     for name in ("rtk", "headroom", "ollama"):
         path = shutil.which(name)
         status[name] = {"available": path is not None, "path": path}
-    router = _find_token_router()
+    router = _find_token_router(root)
     status["token-router"] = {
         "available": router is not None,
         "path": str(router) if router else None,
@@ -146,8 +152,8 @@ def tool_status() -> dict:
     return status
 
 
-def _status(args: argparse.Namespace) -> int:
-    status = tool_status()
+def _status(root: Path, args: argparse.Namespace) -> int:
+    status = tool_status(root)
     if args.format == "text":
         for name, info in status.items():
             state = info["path"] if info["available"] else "unavailable"
@@ -197,8 +203,8 @@ def _route(root: Path, args: argparse.Namespace) -> int:
         )
         print(json.dumps(record, indent=2))
         return 0
-    status = tool_status()
-    router = _find_token_router() if status["token-router"]["available"] else None
+    status = tool_status(root)
+    router = _find_token_router(root) if status["token-router"]["available"] else None
     ollama = status["ollama"]["available"]
     if router is not None and ollama:
         ranges = _router_backend(router, source, args)
@@ -467,6 +473,14 @@ def _shell(root: Path, args: argparse.Namespace) -> int:
         print("refused: no command supplied after `shell`", file=sys.stderr)
         return 2
     rtk_available = shutil.which("rtk") is not None
+    # Validate the telemetry destination BEFORE running the wrapped
+    # command: an invalid --telemetry path must refuse up front, not
+    # raise after the command's side effects have already happened.
+    try:
+        telemetry = _safe_output(root, args.telemetry)
+    except ValueError as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 2
     try:
         completed = subprocess.run(command, capture_output=True, check=False)
     except OSError as exc:
@@ -474,7 +488,6 @@ def _shell(root: Path, args: argparse.Namespace) -> int:
         return 2
     sys.stdout.buffer.write(completed.stdout)
     sys.stderr.buffer.write(completed.stderr)
-    telemetry = _safe_output(root, args.telemetry)
     record = {
         "timestamp": datetime.now(UTC).isoformat(timespec="seconds"),
         "command": command,

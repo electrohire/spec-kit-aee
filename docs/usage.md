@@ -105,6 +105,31 @@ coverage; it does not rerun tests or certify their results.
 Manual `--close GAP-001` changes the existing register selected by `--output`.
 The engine does not validate new passing evidence in this mode; inspect evidence
 before choosing manual closure. Prefer generation from recorded test results.
+(Engine 1.0.3 and later refuse to close a gap ID that does not exist; earlier
+releases reported success anyway.)
+
+## Route evidence and report token savings
+
+Two commands support the optional token-economy tools (`rtk`, `headroom`,
+`token-router`, `ollama` — see `docs/token-economy.md`). Neither is required;
+both degrade gracefully when a tool is absent.
+
+`speckit.aee.route-evidence` triages an oversized log or source file into raw
+evidence slices before an assessment consumes it:
+
+```bash
+python .specify/extensions/aee/scripts/python/aee_token_economy.py --project-root . route --file build.log --mode error_log
+```
+
+Gates always reason over the raw slices, never over router prose or compressed
+summaries. Without a router backend, deterministic line ranges are used.
+
+`speckit.aee.report-savings` reports **measured** savings from RTK and
+Headroom, each on its own line, never estimated and never double-counted:
+
+```bash
+python .specify/extensions/aee/scripts/python/aee_token_economy.py --project-root . report
+```
 
 ## Configuration
 

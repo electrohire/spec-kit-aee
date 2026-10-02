@@ -81,7 +81,7 @@ def test_token_economy_script_declared(manifest: dict) -> None:
 def _no_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(shutil, "which", lambda _name: None)
     monkeypatch.setattr(
-        aee_token_economy, "_find_token_router", lambda: None
+        aee_token_economy, "_find_token_router", lambda *_args: None
     )
 
 
@@ -210,7 +210,7 @@ def test_route_token_router_backend_ranges_are_clamped(
         "import json\nprint(json.dumps({'ranges': [[0, 99999], ['a', 'b'], [5, 8]]}))\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr(aee_token_economy, "_find_token_router", lambda: fake_router)
+    monkeypatch.setattr(aee_token_economy, "_find_token_router", lambda *_args: fake_router)
     monkeypatch.setattr(
         shutil, "which", lambda name: "/usr/bin/ollama" if name == "ollama" else None
     )
@@ -264,7 +264,7 @@ def test_report_measures_rtk_and_keeps_channels_separate(
     monkeypatch.setattr(
         shutil, "which", lambda name: "/usr/bin/rtk" if name == "rtk" else None
     )
-    monkeypatch.setattr(aee_token_economy, "_find_token_router", lambda: None)
+    monkeypatch.setattr(aee_token_economy, "_find_token_router", lambda *_args: None)
 
     def fake_run(*args, **kwargs):
         class Completed:
@@ -289,7 +289,7 @@ def test_report_unparseable_rtk_output_is_na(
     monkeypatch.setattr(
         shutil, "which", lambda name: "/usr/bin/rtk" if name == "rtk" else None
     )
-    monkeypatch.setattr(aee_token_economy, "_find_token_router", lambda: None)
+    monkeypatch.setattr(aee_token_economy, "_find_token_router", lambda *_args: None)
 
     def fake_run(*args, **kwargs):
         class Completed:
@@ -347,3 +347,43 @@ def test_shell_runs_command_and_records_telemetry(
 def test_shell_requires_a_command(tmp_path: Path, capsys) -> None:
     code = aee_token_economy.main(["--project-root", str(tmp_path), "shell"])
     assert code == 2
+
+
+def test_token_router_discovery_anchors_on_project_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Discovery must follow --project-root, not the caller's cwd."""
+    monkeypatch.delenv("TOKEN_ROUTER_HOME", raising=False)
+    router = tmp_path / "token-router" / "scripts" / "router.py"
+    router.parent.mkdir(parents=True)
+    router.write_text("# fake router\n", encoding="utf-8")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    assert aee_token_economy._find_token_router(tmp_path) == router
+    assert aee_token_economy.tool_status(tmp_path)["token-router"]["available"] is True
+
+
+def test_shell_refuses_bad_telemetry_before_running(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys
+) -> None:
+    """An escaping --telemetry path refuses up front; the wrapped
+    command must not run at all."""
+    _no_tools(monkeypatch)
+    marker = tmp_path / "ran.txt"
+    code = aee_token_economy.main(
+        [
+            "--project-root",
+            str(tmp_path),
+            "shell",
+            "--telemetry",
+            "../escape.jsonl",
+            "--",
+            sys.executable,
+            "-c",
+            f"open({str(marker)!r}, 'w').write('x')",
+        ]
+    )
+    assert code == 2
+    assert not marker.exists()
+    assert "refused" in capsys.readouterr().err

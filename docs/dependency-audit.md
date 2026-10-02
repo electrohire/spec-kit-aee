@@ -1,5 +1,11 @@
 # Dependency and onboarding audit — 2026-09-17
 
+> **Update 2026-10-02:** this audit describes the 1.0.1 release surface
+> (six commands), which shipped 2026-09-23. The 1.1.0 branch adds two
+> commands (`speckit.aee.route-evidence`, `speckit.aee.report-savings`)
+> and four optional tools for a total of eight commands; the findings
+> below are retained as the 1.0.1 record, not a description of 1.1.0.
+
 This audit accompanies the unreleased 1.0.1 patch. It does not claim exhaustive
 proof of correctness or security. No release tag is moved, no PR is merged, and
 no inference is performed by these checks.

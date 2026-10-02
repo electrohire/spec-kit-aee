@@ -34,7 +34,7 @@ commands belong in your coding agent's chat, not in PowerShell or Bash.
 | Python | `python>=3.11` | Runs the adapter and engine |
 | AEE engine | `applied-epistemic-engineering>=1.0.2,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps |
 | Evaluator Contract | extension ID `evaluator`, version `>=1.0.0,<2` | [electrohire/spec-kit-evaluator](https://github.com/electrohire/spec-kit-evaluator): result contract, composition, reporting, and routing |
-| This adapter | extension ID `aee` | [electrohire/spec-kit-aee](https://github.com/electrohire/spec-kit-aee): six agent commands and optional lifecycle hooks |
+| This adapter | extension ID `aee` | [electrohire/spec-kit-aee](https://github.com/electrohire/spec-kit-aee): eight agent commands and optional lifecycle hooks |
 
 The engine needs 1.0.2 because earlier releases lack the `gaps` command. Evaluator
 is a Spec Kit extension, **not** a PyPI package or shell executable. Spec Kit's
@@ -60,12 +60,12 @@ when launching your coding agent so it can find both `python` and `aee`.
 python -m pip install "applied-epistemic-engineering>=1.0.2,<2"
 aee --version
 specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.0.0.zip
-specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.0.0.zip
+specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.0.1.zip
 specify extension list
 ```
 
 The commands above install the current published releases. This branch prepares
-**1.0.1 (unreleased)**; do not use a nonexistent `v1.0.1.zip` URL. To test these
+**1.1.0 (unreleased)**; do not use a nonexistent `v1.1.0.zip` URL. To test these
 changes, clone this repository, check out the PR branch, then run
 `specify extension add --dev /absolute/path/to/spec-kit-aee` from a disposable
 initialized project. Back up generated assessments before replacing an existing
@@ -77,10 +77,11 @@ make no model API calls. Your chosen coding agent has its own inference setup.
 
 ## First run and configuration
 
-The [step-by-step walkthrough](docs/usage.md) covers all six commands, expected
+The [step-by-step walkthrough](docs/usage.md) covers all eight commands, expected
 exit codes, output files, gap evidence format, and recovery. Start with the
 unsupported-claim template; replace its example requirement with your own and add
-real evidence only after inspecting it. The published v1.0.0 template still contains an illustrative load-test observation: remove that example evidence and set the claim to draft before using it. This unreleased patch supplies the empty-evidence template. Copying either template is not evidence.
+real evidence only after inspecting it. The published v1.0.1 template ships with
+draft status and empty evidence. Copying the template is not evidence.
 
 The runner currently reads **CLI flags, not `aee-config.yml` or environment
 configuration overrides**. The installed YAML is a reference for agent/operator
