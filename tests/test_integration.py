@@ -25,13 +25,13 @@ def test_manifest_uses_supported_dependency_metadata() -> None:
     optional = {name for name, tool in tools.items() if not tool["required"]}
     assert required == {"python", "aee", "spec-kit-evaluator"}
     assert optional == {"rtk", "headroom", "token-router", "ollama"}
-    assert "1.0.2" in SpecifierSet(tools["aee"]["version"])
-    assert "1.0.1" not in SpecifierSet(tools["aee"]["version"])
+    assert "1.4.0" in SpecifierSet(tools["aee"]["version"])
+    assert "1.0.2" not in SpecifierSet(tools["aee"]["version"])
     for group in ("commands", "templates", "scripts", "config"):
         for item in manifest.data["provides"][group]:
             assert (ROOT / item.get("file", item.get("template", ""))).is_file()
     names = {command["name"] for command in manifest.commands}
-    assert len(names) == 8
+    assert len(names) == 9
     assert len(manifest.hooks) == 5
     assert all(hook["command"] in names for hook in manifest.hooks.values())
 
@@ -120,3 +120,47 @@ def test_no_ledger_flag(project: Path) -> None:
     assert result.returncode == 1, result.stderr
     assert json.loads(result.stdout)["ledger"] is None
     assert not (project / ".specify/extensions/aee/ledger").exists()
+
+
+def test_policy_assessment_carries_verdicts(project: Path) -> None:
+    result = run(project, "assess", "--input", "claims.json",
+                 "--phase", "after_specify", "--policy", "--no-ledger")
+    assert result.returncode in (0, 1), result.stderr
+    paths = json.loads(result.stdout)
+    assessment = json.loads((project / paths["assessment"]).read_text())
+    assert assessment["verdicts"], "policy assessment must carry verdicts"
+    for verdict in assessment["verdicts"].values():
+        assert verdict["verdict"] in {"accept", "challenge", "abstain"}
+    plain = run(project, "assess", "--input", "claims.json",
+                "--phase", "after_specify", "--no-ledger")
+    plain_assessment = json.loads(
+        (project / json.loads(plain.stdout)["assessment"]).read_text())
+    assert plain_assessment["verdicts"] == {}
+
+
+def test_review_queue_between_two_assessments(project: Path) -> None:
+    first = run(project, "assess", "--input", "claims.json", "--no-ledger")
+    # Assessment filenames are timestamped to the second; preserve the
+    # first under its own name before the second run can overwrite it.
+    first_rel = json.loads(first.stdout)["assessment"]
+    (project / "first-assessment.json").write_bytes(
+        (project / first_rel).read_bytes())
+    first_path = "first-assessment.json"
+    claims = json.loads((project / "claims.json").read_text())
+    claims["claims"][0]["status"] = "supported"
+    claims["claims"][0]["evidence"] = [
+        {"ref": f"run-{index}", "source_id": f"S{index}",
+         "kind": "observed", "source_quality": "test",
+         "direction": "supports"}
+        for index in (1, 2)
+    ]
+    (project / "claims.json").write_text(json.dumps(claims))
+    second = run(project, "assess", "--input", "claims.json", "--no-ledger")
+    second_path = json.loads(second.stdout)["assessment"]
+    review = run(project, "review", "--previous", first_path,
+                 "--current", second_path)
+    assert review.returncode == 0, review.stderr
+    queue = json.loads(review.stdout)
+    assert queue["materiality"] == 0.05
+    moved = {item["claim_id"] for item in queue["items"]}
+    assert claims["claims"][0]["id"] in moved

@@ -16,7 +16,7 @@ Accept `matrix=<path>`, `evidence=<dir>`, and optional `output=<path>`, `close=<
 
 ## Prerequisites
 
-1. Confirm the `aee` command is available and reports version >=1.0.2,<2. If absent, stop and recommend `python -m pip install "applied-epistemic-engineering>=1.0.2,<2"`.
+1. Confirm the `aee` command is available and reports version >=1.4.0,<2. If absent, stop and recommend `python -m pip install "applied-epistemic-engineering>=1.4.0,<2"`.
 2. Confirm the verification matrix file exists. If absent, stop and recommend creating `docs/verification-matrix.md` first.
 3. Resolve the project root. Never follow symlinks or read outside the project root.
 

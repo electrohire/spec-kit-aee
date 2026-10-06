@@ -32,11 +32,11 @@ commands belong in your coding agent's chat, not in PowerShell or Bash.
 | --- | --- | --- |
 | Spec Kit | `specify-cli>=1.0.0` | [github/spec-kit](https://github.com/github/spec-kit): project and command installation |
 | Python | `python>=3.11` | Runs the adapter and engine |
-| AEE engine | `applied-epistemic-engineering>=1.0.2,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps |
+| AEE engine | `applied-epistemic-engineering>=1.4.0,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps |
 | Evaluator Contract | extension ID `evaluator`, version `>=1.0.0,<2` | [electrohire/spec-kit-evaluator](https://github.com/electrohire/spec-kit-evaluator): result contract, composition, reporting, and routing |
 | This adapter | extension ID `aee` | [electrohire/spec-kit-aee](https://github.com/electrohire/spec-kit-aee): eight agent commands and optional lifecycle hooks |
 
-The engine needs 1.0.2 because earlier releases lack the `gaps` command. Evaluator
+The engine needs 1.4.0 for the policy-gate, reliability, and review CLI surface (1.0.2 introduced the `gaps` command). Evaluator
 is a Spec Kit extension, **not** a PyPI package or shell executable. Spec Kit's
 `requires.tools` metadata documents dependencies; it does not install them or
 verify their versions. Install both dependencies explicitly before this adapter.
@@ -57,7 +57,7 @@ activation, use `.\.venv\Scripts\python.exe` for pip and put
 when launching your coding agent so it can find both `python` and `aee`.
 
 ```bash
-python -m pip install "applied-epistemic-engineering>=1.0.2,<2"
+python -m pip install "applied-epistemic-engineering>=1.4.0,<2"
 aee --version
 specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.0.0.zip
 specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.0.1.zip
