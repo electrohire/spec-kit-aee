@@ -45,11 +45,11 @@ def main() -> None:
         listed = command(specify, "extension", "list", "--json")
         installed = {item["id"]: item for item in json.loads(listed)}
         assert installed["evaluator"]["enabled"] and installed["aee"]["enabled"]
-        assert installed["aee"]["provides"]["commands"] == 8
+        assert installed["aee"]["provides"]["commands"] == 9
         assert installed["aee"]["provides"]["hooks"] == 5
         commands = list((root / ".claude/commands").glob("speckit.aee.*.md"))
         commands += list((root / ".claude/skills").glob("speckit-aee-*/SKILL.md"))
-        assert len(commands) == 8, commands
+        assert len(commands) == 9, commands
         for path in commands:
             assert not re.search(r"__SPECKIT_COMMAND_[A-Z_]+__", path.read_text())
         hooks = yaml.safe_load((root / ".specify/extensions.yml").read_text())["hooks"]
@@ -83,7 +83,7 @@ def main() -> None:
         command(sys.executable, runner, "gaps", "--matrix", "matrix.md",
                 "--evidence", "evidence", "--output", "GAPS.md")
         assert "**Open:** 1" in (root / "GAPS.md").read_text()
-        print("PASS: initialized project, both extensions, eight rendered commands, "
+        print("PASS: initialized project, both extensions, nine rendered commands, "
               "five AEE hooks, resolved placeholders, and all six installed operations")
 
 

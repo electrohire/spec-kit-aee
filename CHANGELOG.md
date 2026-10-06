@@ -2,6 +2,18 @@
 
 All notable changes follow Semantic Versioning.
 
+## 1.2.0 - Unreleased
+
+- Wire the engine's epistemic-ledger ports into the assess flow: the runner's
+  `assess` gains `--policy` (per-claim ACCEPT / CHALLENGE / ABSTAIN verdicts,
+  with `--min-independent-sources` / `--contested-threshold` overrides) and
+  `--reliability <table.json>` (measured per-source reliability blended into
+  scoring); a new `speckit.aee.review` command diffs two assessments into a
+  materiality-filtered review queue via the runner's `review` subcommand.
+- Require `applied-epistemic-engineering>=1.4.0,<2` (dev pin 1.4.0): the CLI
+  surface for the gates, reliability, and review landed in engine 1.4.0, on
+  top of the 1.1.0-1.3.0 library ports.
+
 ## 1.1.0 - Unreleased
 
 - Integrate the token-economy policy into AEE core: declare optional `rtk`,

@@ -24,6 +24,11 @@ def parser() -> argparse.ArgumentParser:
     assess.add_argument("--project")
     assess.add_argument("--actor", default="spec-kit-aee")
     assess.add_argument("--no-ledger", action="store_true")
+    assess.add_argument("--policy", action="store_true")
+    assess.add_argument("--min-independent-sources", type=int, default=2)
+    assess.add_argument("--contested-threshold", type=float, default=0.25)
+    assess.add_argument("--reliability", type=Path)
+    assess.add_argument("--reliability-alpha", type=float, default=0.5)
 
     challenge = sub.add_parser("challenge")
     challenge.add_argument("--input", type=Path, required=True)
@@ -47,6 +52,12 @@ def parser() -> argparse.ArgumentParser:
     gaps.add_argument("--output", type=Path)
     gaps.add_argument("--close")
     gaps.add_argument("--existing", type=Path)
+
+    review = sub.add_parser("review")
+    review.add_argument("--previous", type=Path, required=True)
+    review.add_argument("--current", type=Path, required=True)
+    review.add_argument("--materiality", type=float, default=0.05)
+    review.add_argument("--limit", type=int)
     return root
 
 
@@ -57,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     executable = shutil.which("aee")
     if executable is None:
         print(
-            "Missing required 'aee' command. Install applied-epistemic-engineering>=1.0.2,<2.",
+            "Missing required 'aee' command. Install applied-epistemic-engineering>=1.4.0,<2.",
             file=sys.stderr,
         )
         return 2
@@ -76,7 +87,27 @@ def main(argv: list[str] | None = None) -> int:
         ).returncode
     if args.command == "gaps":
         return _gaps(executable, root, args)
+    if args.command == "review":
+        return _review(executable, root, args)
     raise AssertionError("unreachable")
+
+
+def _review(executable: str, root: Path, args: argparse.Namespace) -> int:
+    previous = _safe_existing(root, args.previous)
+    current = _safe_existing(root, args.current)
+    command = [
+        executable,
+        "review",
+        "--previous",
+        str(previous),
+        "--current",
+        str(current),
+        "--materiality",
+        str(args.materiality),
+    ]
+    if args.limit is not None:
+        command.extend(["--limit", str(args.limit)])
+    return subprocess.run(command, check=False).returncode
 
 
 def _gaps(executable: str, root: Path, args: argparse.Namespace) -> int:
@@ -142,6 +173,22 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
         "--actor",
         args.actor,
     ]
+    if args.policy:
+        command.extend([
+            "--policy",
+            "--min-independent-sources",
+            str(args.min_independent_sources),
+            "--contested-threshold",
+            str(args.contested_threshold),
+        ])
+    if args.reliability:
+        table = _safe_existing(root, args.reliability)
+        command.extend([
+            "--reliability",
+            str(table),
+            "--reliability-alpha",
+            str(args.reliability_alpha),
+        ])
     ledger: Path | None = None
     if not args.no_ledger:
         ledger = _safe_output(
