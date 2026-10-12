@@ -173,5 +173,10 @@ def test_check_install_exercises_the_refusal() -> None:
     # exercise (remove the evaluator dir -> assess must refuse) is
     # part of the install check.
     assert 'installed["evaluator"]["enabled"]' in source
-    assert "shutil.rmtree(evaluator_dir)" in source
+    assert "_rmtree(evaluator_dir)" in source
+    # The removal goes through the Windows-safe helper: the installed
+    # tree contains a copied `.git` whose read-only object files
+    # Windows refuses to unlink (WinError 5), so plain shutil.rmtree
+    # dies there; the helper's handler clears the bit and retries.
+    assert "shutil.rmtree(root, onexc=_retry_after_clearing_readonly)" in source
     assert "assess without the evaluator extension must exit 2" in source
