@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -119,3 +121,377 @@ def test_challenge_end_to_end(tmp_path: Path) -> None:
     assert value["mode"] == "challenge"
     assert "failures" in value
     assert "recoveries" in value
+
+
+# ---------------------------------------------------------------------------
+# Error / output contract (RT3-01, RT3-02, RT3-07, RT3-21) and version /
+# dependency truth (RT3-03, RT3-04). These tests are hermetic: a stub
+# `aee` executable on PATH stands in for the engine, so they do not
+# depend on which engine version the ambient environment provides.
+# ---------------------------------------------------------------------------
+
+_STUB_AEE = '''\
+#!/usr/bin/env python3
+import json
+import os
+import sys
+from pathlib import Path
+
+args = sys.argv[1:]
+if args == ["--version"]:
+    print(os.environ.get("AEE_STUB_VERSION_TEXT", "aee 1.4.0"))
+    sys.exit(0)
+behavior = os.environ.get("AEE_STUB_BEHAVIOR", "ok")
+command = args[0] if args else ""
+
+
+def flag(name):
+    return args[args.index(name) + 1] if name in args else None
+
+
+if behavior == "fail":
+    sys.exit(2)
+if command == "assess":
+    Path(flag("--output")).write_text(json.dumps({"outcome": "iterate"}))
+    Path(flag("--evaluator-output")).write_text(json.dumps({"outcome": "iterate"}))
+    ledger = flag("--ledger")
+    if ledger:
+        Path(ledger).parent.mkdir(parents=True, exist_ok=True)
+        with Path(ledger).open("a") as handle:
+            handle.write("{}\\n")
+    sys.exit(1)
+if command == "challenge":
+    Path(flag("--output")).write_text(json.dumps({"mode": "challenge"}))
+    sys.exit(1)
+if command == "graph":
+    Path(flag("--output")).write_text("graph TD\\n")
+    sys.exit(0)
+if command == "gaps":
+    print("Gap register written to somewhere")
+    print()
+    print("Open: 1 | Closed: 0")
+    output = flag("--output")
+    if output:
+        Path(output).write_text("**Open:** 1\\n")
+    sys.exit(0)
+sys.exit(0)
+'''
+
+
+def _stub_env(tmp_path: Path, version: str = "1.4.0", behavior: str = "ok") -> dict:
+    bin_dir = tmp_path / "stub-bin"
+    bin_dir.mkdir(exist_ok=True)
+    stub = bin_dir / "aee"
+    stub.write_text(_STUB_AEE, encoding="utf-8")
+    stub.chmod(stub.stat().st_mode | stat.S_IEXEC)
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
+    env["AEE_STUB_VERSION_TEXT"] = f"aee {version}"
+    env["AEE_STUB_BEHAVIOR"] = behavior
+    return env
+
+
+requires_posix_stub = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="stub aee is executed via a POSIX shebang script",
+)
+
+
+def _run_stubbed(
+    root: Path, env: dict, *args: str
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(RUNNER), "--project-root", str(root), *args],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+@pytest.fixture
+def stub_project(tmp_path: Path) -> Path:
+    root = tmp_path / "project"
+    root.mkdir()
+    (root / "claims.json").write_text('{"claims": []}', encoding="utf-8")
+    return root
+
+
+def _assert_clean_refusal(completed: subprocess.CompletedProcess[str]) -> None:
+    assert completed.returncode == 2, completed.stdout + completed.stderr
+    assert "Traceback" not in completed.stderr
+    assert "refused:" in completed.stderr
+
+
+@requires_posix_stub
+def test_missing_input_is_clean_exit_2(tmp_path: Path, stub_project: Path) -> None:
+    completed = _run_stubbed(
+        stub_project, _stub_env(tmp_path), "assess", "--input", "nope.json"
+    )
+    _assert_clean_refusal(completed)
+
+
+@requires_posix_stub
+def test_traversal_input_is_clean_exit_2(tmp_path: Path, stub_project: Path) -> None:
+    completed = _run_stubbed(
+        stub_project, _stub_env(tmp_path), "assess", "--input", "../outside.json"
+    )
+    _assert_clean_refusal(completed)
+
+
+@requires_posix_stub
+def test_bad_phase_is_clean_exit_2(tmp_path: Path, stub_project: Path) -> None:
+    completed = _run_stubbed(
+        stub_project,
+        _stub_env(tmp_path),
+        "assess",
+        "--input",
+        "claims.json",
+        "--phase",
+        "After_Plan",
+    )
+    _assert_clean_refusal(completed)
+
+
+def test_bare_after_phase_is_rejected() -> None:
+    with pytest.raises(ValueError):
+        run_aee._safe_segment("after_")
+
+
+@requires_posix_stub
+def test_missing_project_root_is_clean_exit_2(tmp_path: Path) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(RUNNER),
+            "--project-root",
+            str(tmp_path / "does-not-exist"),
+            "verify",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=_stub_env(tmp_path),
+    )
+    _assert_clean_refusal(completed)
+
+
+@requires_posix_stub
+def test_verify_without_ledger_is_clean_exit_2(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    completed = _run_stubbed(stub_project, _stub_env(tmp_path), "verify")
+    _assert_clean_refusal(completed)
+
+
+@requires_posix_stub
+def test_gate_missing_input_is_clean_exit_2(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    completed = _run_stubbed(
+        stub_project, _stub_env(tmp_path), "gate", "--input", "nope.json"
+    )
+    _assert_clean_refusal(completed)
+
+
+@requires_posix_stub
+def test_missing_aee_is_clean_exit_2(tmp_path: Path, stub_project: Path) -> None:
+    empty_bin = tmp_path / "empty-bin"
+    empty_bin.mkdir()
+    env = dict(os.environ)
+    env["PATH"] = str(empty_bin)
+    completed = _run_stubbed(stub_project, env, "verify")
+    _assert_clean_refusal(completed)
+    assert "missing required 'aee'" in completed.stderr
+
+
+@pytest.mark.parametrize("version", ["1.0.2", "1.0.4", "2.0.0", "0.9.9"])
+@requires_posix_stub
+def test_out_of_range_engine_version_is_refused(
+    tmp_path: Path, stub_project: Path, version: str
+) -> None:
+    completed = _run_stubbed(
+        stub_project,
+        _stub_env(tmp_path, version=version),
+        "assess",
+        "--input",
+        "claims.json",
+    )
+    _assert_clean_refusal(completed)
+    # The error names both the found and the required versions.
+    assert version in completed.stderr
+    assert run_aee.REQUIRED_AEE_VERSION in completed.stderr
+    # The engine was never invoked for a verdict: no assessment tree.
+    assert not (stub_project / ".specify").exists()
+
+
+@requires_posix_stub
+def test_unparseable_engine_version_is_refused(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    env = _stub_env(tmp_path)
+    env["AEE_STUB_VERSION_TEXT"] = "aee (unknown build)"
+    completed = _run_stubbed(stub_project, env, "assess", "--input", "claims.json")
+    _assert_clean_refusal(completed)
+    assert run_aee.REQUIRED_AEE_VERSION in completed.stderr
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [("aee 1.4.0", (1, 4, 0)), ("aee 2.0.0-rc1", (2, 0, 0)), ("nope", None)],
+)
+def test_parse_aee_version(text: str, expected: tuple[int, int, int] | None) -> None:
+    assert run_aee._parse_aee_version(text) == expected
+
+
+@pytest.mark.parametrize(
+    ("version", "ok"),
+    [((1, 4, 0), True), ((1, 9, 9), True), ((1, 0, 2), False), ((2, 0, 0), False)],
+)
+def test_aee_version_range(version: tuple[int, int, int], ok: bool) -> None:
+    assert run_aee._aee_version_satisfies(version) is ok
+
+
+@requires_posix_stub
+def test_engine_failure_emits_no_phantom_paths(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    completed = _run_stubbed(
+        stub_project,
+        _stub_env(tmp_path, behavior="fail"),
+        "assess",
+        "--input",
+        "claims.json",
+    )
+    assert completed.returncode == 2
+    payload = json.loads(completed.stdout)
+    assert payload["ok"] is False
+    assert payload["aee_exit_code"] == 2
+    # No path is named for a file the engine never wrote.
+    assert payload["assessment"] is None
+    assert payload["evaluator_result"] is None
+    assert payload["ledger"] is None
+
+
+@requires_posix_stub
+def test_assess_success_names_only_written_files(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    completed = _run_stubbed(
+        stub_project, _stub_env(tmp_path), "assess", "--input", "claims.json"
+    )
+    assert completed.returncode == 1  # the stub's scored verdict passes through
+    payload = json.loads(completed.stdout)
+    assert payload["ok"] is True
+    assert payload["aee_exit_code"] == 1
+    for key in ("assessment", "evaluator_result", "ledger"):
+        assert payload[key] is not None
+        assert (stub_project / payload[key]).is_file()
+    # No evaluator extension in this project; the runner says so instead
+    # of implying the contract result came from it (RT3-04).
+    assert payload["evaluator_extension_present"] is False
+
+
+@requires_posix_stub
+def test_assess_reports_evaluator_extension_when_present(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    (stub_project / ".specify" / "extensions" / "evaluator").mkdir(parents=True)
+    completed = _run_stubbed(
+        stub_project, _stub_env(tmp_path), "assess", "--input", "claims.json"
+    )
+    payload = json.loads(completed.stdout)
+    assert payload["evaluator_extension_present"] is True
+
+
+@requires_posix_stub
+def test_graph_failure_includes_exit_code_and_no_phantom_path(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    completed = _run_stubbed(
+        stub_project,
+        _stub_env(tmp_path, behavior="fail"),
+        "graph",
+        "--input",
+        "claims.json",
+    )
+    assert completed.returncode == 2
+    payload = json.loads(completed.stdout)
+    assert payload["aee_exit_code"] == 2
+    assert payload["ok"] is False
+    assert payload["graph"] is None
+
+
+@requires_posix_stub
+def test_graph_success_includes_exit_code(tmp_path: Path, stub_project: Path) -> None:
+    completed = _run_stubbed(
+        stub_project, _stub_env(tmp_path), "graph", "--input", "claims.json"
+    )
+    assert completed.returncode == 0
+    payload = json.loads(completed.stdout)
+    assert payload["aee_exit_code"] == 0
+    assert payload["ok"] is True
+    assert (stub_project / payload["graph"]).is_file()
+
+
+@requires_posix_stub
+def test_challenge_failure_emits_no_phantom_path(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    completed = _run_stubbed(
+        stub_project,
+        _stub_env(tmp_path, behavior="fail"),
+        "challenge",
+        "--input",
+        "claims.json",
+    )
+    assert completed.returncode == 2
+    payload = json.loads(completed.stdout)
+    assert payload["challenge"] is None
+    assert payload["aee_exit_code"] == 2
+    assert payload["ok"] is False
+
+
+@requires_posix_stub
+def test_gaps_output_stdout_is_pure_json(tmp_path: Path, stub_project: Path) -> None:
+    (stub_project / "matrix.md").write_text("| Test ID |\n", encoding="utf-8")
+    (stub_project / "evidence").mkdir()
+    completed = _run_stubbed(
+        stub_project,
+        _stub_env(tmp_path),
+        "gaps",
+        "--matrix",
+        "matrix.md",
+        "--evidence",
+        "evidence",
+        "--output",
+        "GAPS.md",
+    )
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(completed.stdout)  # engine chatter must not pollute stdout
+    assert payload["gaps"] == "GAPS.md"
+    assert payload["aee_exit_code"] == 0
+    assert payload["ok"] is True
+    assert "Gap register written" in completed.stderr
+
+
+@requires_posix_stub
+def test_gaps_close_requires_existing_register(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    (stub_project / "matrix.md").write_text("| Test ID |\n", encoding="utf-8")
+    (stub_project / "evidence").mkdir()
+    completed = _run_stubbed(
+        stub_project,
+        _stub_env(tmp_path),
+        "gaps",
+        "--matrix",
+        "matrix.md",
+        "--evidence",
+        "evidence",
+        "--output",
+        "TYPO.md",
+        "--close",
+        "GAP-001",
+    )
+    _assert_clean_refusal(completed)
