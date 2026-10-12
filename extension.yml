@@ -53,6 +53,9 @@ requires:
 
 provides:
   commands:
+    - name: speckit.aee.draft-claims
+      file: commands/speckit.aee.draft-claims.md
+      description: Draft atomic claims from a spec's requirements for human ratification; drafts are born draft and are never upgraded by the tool
     - name: speckit.aee.assess
       file: commands/speckit.aee.assess.md
       description: Assess explicit claims and emit both a rich AEE assessment and an Evaluator Contract result
