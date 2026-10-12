@@ -35,6 +35,48 @@ At startup the runner runs ``aee --version`` and refuses (exit 2) when
 the installed engine is outside ``REQUIRED_AEE_VERSION``, naming both
 the found and required versions. The range mirrors ``extension.yml``
 (``requires.tools`` entry ``aee``); keep the two in sync.
+
+Extension version stamp (FR-4.2) and ledger verdict (FR-8.2)
+------------------------------------------------------------
+The engine CLI has no metadata-injection channel, so the runner
+cannot ask it to record ``metadata.extension_version``. The runner
+therefore stamps the assessment itself — and does so BEFORE
+ledgering, never after: ``assess`` invokes the engine with
+``--no-ledger`` (capability-probed: engines that ledger only on an
+explicit ``--ledger`` — the released 1.4.0 CLI — never ledger here
+anyway), stamps ``extension_version`` (and the truthful
+``metadata.ledger`` record for the runner-chosen path) into the
+assessment file, then appends THAT stamped assessment to the ledger
+with the engine's own ``aee.ledger.HashChainLedger`` and verifies the
+chain, reporting the verdict as ``ledger_verification`` in the JSON
+summary. The ledger entry's SHA-256 therefore covers exactly the
+assessment file the runner names; a post-ledger stamp would falsify
+that record and is never applied. Assessments produced by the bare
+CLI carry no ``extension_version`` key — the runner does not
+fabricate one for runs it did not produce. With ``--no-ledger`` the
+runner stamps the file only (its ``metadata.ledger`` echo stays the
+engine's "disabled" record) and reports ``ledger_verification`` as
+``null`` — no verdict is invented for a ledgering that did not happen.
+Because the stamp/append step uses the engine's Python package, the
+runner requires ``aee`` to be importable by its own interpreter (the
+normal pip install provides the CLI and the package together); if it
+is not importable, ``assess`` refuses cleanly (exit 2) before the
+engine runs.
+
+Drafting (FR-2 / FR-6.3)
+------------------------
+``draft-claims`` invokes the engine's drafting helper
+(``aee.extract.draft_claims_from_spec``) — the engine CLI exposes no
+drafting subcommand — and writes its output verbatim as a claims
+bundle. The runner contains no code path that ratifies, supports, or
+upgrades a drafted claim (FR-2.2): drafts are born ``status: draft``
+with ``asserted``/``model`` evidence, TODO falsifiers pass through
+untouched so strict loading rejects unfinished drafts downstream,
+and ``depends_on`` proposals scaffolded from explicit spec
+cross-references are surfaced in the JSON summary as proposals.
+Drafting requires an engine build whose ``aee.extract`` provides the
+helper (engine builds after 1.4.0); an older importable engine makes
+``draft-claims`` refuse cleanly (exit 2), naming the missing helper.
 """
 
 from __future__ import annotations
@@ -101,6 +143,10 @@ def parser() -> argparse.ArgumentParser:
     review.add_argument("--current", type=Path, required=True)
     review.add_argument("--materiality", type=float, default=0.05)
     review.add_argument("--limit", type=int)
+
+    draft = sub.add_parser("draft-claims")
+    draft.add_argument("--spec", type=Path, required=True)
+    draft.add_argument("--output", type=Path)
     return root
 
 
@@ -132,8 +178,10 @@ def main(argv: list[str] | None = None) -> int:
             return _gaps(executable, root, args)
         if args.command == "review":
             return _review(executable, root, args)
+        if args.command == "draft-claims":
+            return _draft_claims(root, args)
         raise AssertionError("unreachable")
-    except (ValueError, OSError) as exc:
+    except (ValueError, TypeError, OSError) as exc:
         # Runner refusals and OS-level failures are errors (exit 2),
         # never scored verdicts, and never surface as tracebacks.
         print(f"refused: {exc}", file=sys.stderr)
@@ -181,6 +229,202 @@ def _check_aee_version(executable: str) -> None:
             f"{REQUIRED_AEE_VERSION} declared in extension.yml; install "
             f"applied-epistemic-engineering{REQUIRED_AEE_VERSION}."
         )
+
+
+def _extension_version() -> str | None:
+    """This extension's version, read from its own extension.yml.
+
+    The runner lives at scripts/python/run_aee.py inside the installed
+    extension, so the manifest is two levels up. The manifest is
+    parsed with a narrow pattern (the runner is dependency-free and
+    does not load YAML). Returns None when the version cannot be
+    determined — callers then stamp nothing rather than fabricating.
+    """
+    manifest = Path(__file__).resolve().parents[2] / "extension.yml"
+    try:
+        text = manifest.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    match = re.search(r"(?m)^extension:\s*\n(?:.*\n)*?  version:\s*'?(\d+\.\d+\.\d+)", text)
+    if match is None:
+        match = re.search(r"(?m)^  version:\s*'?(\d+\.\d+\.\d+)", text)
+    return match.group(1) if match else None
+
+
+class _AssessmentView:
+    """Minimal to_dict() shim so the engine ledger can hash a dict."""
+
+    def __init__(self, value: dict) -> None:
+        self._value = value
+
+    def to_dict(self) -> dict:
+        return self._value
+
+
+def _load_hash_chain_ledger() -> object:
+    """Import the engine's HashChainLedger class or refuse cleanly."""
+    try:
+        from aee.ledger import HashChainLedger
+    except ImportError as exc:
+        raise ValueError(
+            "the aee engine package is not importable by this Python "
+            "interpreter; the runner stamps and ledgers assessments "
+            "through aee.ledger (the pip install of "
+            "applied-epistemic-engineering provides the CLI and the "
+            f"package together): {exc}"
+        ) from exc
+    return HashChainLedger
+
+
+def _draft_claims(root: Path, args: argparse.Namespace) -> int:
+    candidate = args.spec if args.spec.is_absolute() else root / args.spec
+    if candidate.is_dir():
+        spec_file = _safe_existing(root, args.spec / "spec.md")
+        spec_dir = spec_file.parent
+    else:
+        spec_file = _safe_existing(root, args.spec)
+        spec_dir = spec_file.parent
+    if args.output:
+        output = _safe_output(root, args.output)
+    else:
+        output = _safe_output(root, spec_dir.relative_to(root) / "aee-claims.json")
+    if output.resolve(strict=False) == spec_file.resolve(strict=False):
+        raise ValueError("draft output must not overwrite the source spec")
+    try:
+        from aee.extract import TODO_FALSIFIER, draft_claims_from_spec, dump_claims
+    except ImportError as exc:
+        raise ValueError(
+            "draft-claims requires the engine drafting helper "
+            "aee.extract.draft_claims_from_spec, which this Python "
+            "interpreter cannot import; drafting ships in engine builds "
+            "after 1.4.0 — install a current "
+            f"applied-epistemic-engineering{REQUIRED_AEE_VERSION} build: {exc}"
+        ) from exc
+    spec_text = spec_file.read_text(encoding="utf-8")
+    source_name = spec_file.relative_to(root).as_posix()
+    claims = draft_claims_from_spec(spec_text, source_name=source_name)
+    if not claims:
+        raise ValueError(
+            f"no requirements found in {source_name}; nothing to draft "
+            "(the helper recognises FR-/US- references, user-story "
+            "headings, and acceptance-criteria bullets)"
+        )
+    # The helper's output is written verbatim: the runner never edits
+    # a draft's status, evidence, falsifiers, or dependencies (FR-2.2).
+    bundle_text = dump_claims(claims)
+    bundle = json.loads(bundle_text)
+    drafted = bundle.get("claims", [])
+    before = _snapshot(output)
+    output.write_text(
+        bundle_text if bundle_text.endswith("\n") else bundle_text + "\n",
+        encoding="utf-8",
+    )
+    todo_count = sum(
+        1
+        for claim in drafted
+        if any(
+            TODO_FALSIFIER in str(test)
+            for test in claim.get("falsification_tests", [])
+        )
+    )
+    proposals = [
+        {
+            "claim_id": claim.get("id"),
+            "depends_on": claim.get("depends_on", []),
+            "proposed_from": claim.get("metadata", {}).get(
+                "depends_on_proposed_from", []
+            ),
+        }
+        for claim in drafted
+        if claim.get("depends_on")
+    ]
+    print(
+        json.dumps(
+            {
+                "draft_claims": _rel_or_none(root, output, before),
+                "spec": source_name,
+                "claim_count": len(drafted),
+                "todo_falsifier_count": todo_count,
+                "depends_on_proposals": proposals,
+                "aee_exit_code": 0,
+                "ok": True,
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
+def _stamp_and_ledger(
+    assessment: Path,
+    ledger: Path | None,
+    actor: str,
+    ledger_class: object | None,
+) -> tuple[str | None, dict | None]:
+    """Stamp extension_version, then (optionally) ledger + verify.
+
+    The stamp is applied to the assessment dict BEFORE the ledger
+    append hashes it, so the ledger records exactly the file the
+    runner names (FR-4.2 / FR-8.2). Returns (extension_version,
+    ledger_verification) — both None-valued honestly when absent.
+    """
+    try:
+        value = json.loads(assessment.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ValueError(f"could not stamp the assessment {assessment}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise TypeError(f"assessment {assessment} is not a JSON object; cannot stamp it")
+    metadata = value.setdefault("metadata", {})
+    version = _extension_version()
+    if version is not None:
+        metadata["extension_version"] = version
+    if ledger is not None:
+        metadata["ledger"] = {"mode": "custom", "path": ledger.as_posix()}
+    assessment.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    verification: dict | None = None
+    if ledger is not None:
+        assert ledger_class is not None
+        chain = ledger_class(ledger)  # type: ignore[operator]
+        try:
+            chain.append_assessment(_AssessmentView(value), actor=actor)
+            result = chain.verify()
+        except (ValueError, KeyError, TypeError, OSError) as exc:
+            raise ValueError(
+                f"could not append/verify the assessment in ledger {ledger}: {exc}"
+            ) from exc
+        verification = {
+            "valid": result.valid,
+            "entries": result.entries,
+            "head_hash": result.head_hash,
+            "errors": list(result.errors),
+        }
+    return version, verification
+
+
+_NO_LEDGER_SUPPORT: dict[str, bool] = {}
+
+
+def _assess_supports_no_ledger(executable: str) -> bool:
+    """True when `aee assess --help` advertises --no-ledger.
+
+    Capability-probed (cached per executable) instead of assumed from
+    the version: engines that ledger by default need the opt-out,
+    engines that ledger only on --ledger reject the unknown flag.
+    A failed probe means "not advertised" — the safe default.
+    """
+    if executable not in _NO_LEDGER_SUPPORT:
+        try:
+            completed = subprocess.run(
+                [executable, "assess", "--help"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+            _NO_LEDGER_SUPPORT[executable] = "--no-ledger" in completed.stdout
+        except (OSError, subprocess.SubprocessError):
+            _NO_LEDGER_SUPPORT[executable] = False
+    return _NO_LEDGER_SUPPORT[executable]
 
 
 def _snapshot(path: Path) -> tuple[int, int] | None:
@@ -339,11 +583,25 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
             str(args.reliability_alpha),
         ])
     ledger: Path | None = None
+    ledger_class: object | None = None
     if not args.no_ledger:
         ledger = _safe_output(
             root, Path(".specify/extensions/aee/ledger/epistemic-ledger.jsonl")
         )
-        command.extend(["--ledger", str(ledger)])
+        # The runner ledgers the STAMPED assessment itself (see the
+        # module docstring): the engine is told --no-ledger so its own
+        # append cannot record an unstamped hash, and _load failures
+        # refuse here, before the engine runs.
+        ledger_class = _load_hash_chain_ledger()
+    # The runner disables engine-side ledgering so its own append can
+    # record the STAMPED assessment: with ledgering requested, the
+    # runner appends after stamping; without it, the engine's
+    # disabled-ledger echo is the truth. --no-ledger exists only on
+    # engines that ledger by default (post-1.4.0); the released 1.4.0
+    # CLI ledgers only on an explicit --ledger, so the flag is passed
+    # only when the installed CLI advertises it.
+    if _assess_supports_no_ledger(executable):
+        command.append("--no-ledger")
     before = {
         "assessment": _snapshot(assessment),
         "evaluator": _snapshot(evaluator),
@@ -355,17 +613,26 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
     # it happens to be installed so consumers know compose/report are
     # available.
     completed = subprocess.run(command, check=False)
+    assessment_rel = _rel_or_none(root, assessment, before["assessment"])
+    extension_version: str | None = None
+    ledger_verification: dict | None = None
+    if assessment_rel is not None:
+        extension_version, ledger_verification = _stamp_and_ledger(
+            assessment, ledger, args.actor, ledger_class
+        )
     print(
         json.dumps(
             {
-                "assessment": _rel_or_none(root, assessment, before["assessment"]),
+                "assessment": assessment_rel,
                 "evaluator_result": _rel_or_none(
                     root, evaluator, before["evaluator"]
                 ),
                 "evaluator_extension_present": evaluator_extension_present,
+                "extension_version": extension_version,
                 "ledger": (
                     _rel_or_none(root, ledger, before["ledger"]) if ledger else None
                 ),
+                "ledger_verification": ledger_verification,
                 "aee_exit_code": completed.returncode,
                 "ok": completed.returncode in (0, 1),
             },

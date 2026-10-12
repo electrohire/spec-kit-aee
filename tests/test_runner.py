@@ -152,13 +152,18 @@ def flag(name):
 if behavior == "fail":
     sys.exit(2)
 if command == "assess":
-    Path(flag("--output")).write_text(json.dumps({"outcome": "iterate"}))
+    # Full assessment shape: the runner stamps this dict and hashes it
+    # into the ledger itself (the engine CLI is told --no-ledger), so
+    # the stub must emit the keys the ledger append reads.
+    Path(flag("--output")).write_text(json.dumps({
+        "project": "stub-project",
+        "phase": flag("--phase") or "after_plan",
+        "outcome": "iterate",
+        "claims": [],
+        "metadata": {"engine_version": "1.4.0"},
+        "stub_marker": os.environ.get("AEE_STUB_MARKER", ""),
+    }))
     Path(flag("--evaluator-output")).write_text(json.dumps({"outcome": "iterate"}))
-    ledger = flag("--ledger")
-    if ledger:
-        Path(ledger).parent.mkdir(parents=True, exist_ok=True)
-        with Path(ledger).open("a") as handle:
-            handle.write("{}\\n")
     sys.exit(1)
 if command == "challenge":
     Path(flag("--output")).write_text(json.dumps({"mode": "challenge"}))
@@ -495,3 +500,138 @@ def test_gaps_close_requires_existing_register(
         "GAP-001",
     )
     _assert_clean_refusal(completed)
+
+
+# ---------------------------------------------------------------------------
+# Spec 002 Phase 4: extension version stamp (T403 / FR-4.2) and ledger
+# verdict (T802 / FR-8.2). Hermetic: the stub `aee` executable emits a
+# full-shaped assessment; the runner stamps it and ledgers it through
+# the real aee.ledger of the ambient engine package.
+# ---------------------------------------------------------------------------
+
+import hashlib
+
+
+@requires_posix_stub
+def test_assess_stamps_extension_version_before_ledgering(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    completed = _run_stubbed(
+        stub_project, _stub_env(tmp_path), "assess", "--input", "claims.json"
+    )
+    assert completed.returncode == 1
+    payload = json.loads(completed.stdout)
+    version = run_aee._extension_version()
+    assert version is not None
+    assert payload["extension_version"] == version
+    assessment = json.loads((stub_project / payload["assessment"]).read_text())
+    assert assessment["metadata"]["extension_version"] == version
+    assert assessment["metadata"]["engine_version"] == "1.4.0"
+    assert assessment["metadata"]["ledger"]["mode"] == "custom"
+    # FR-8.2: the verify verdict rides alongside the paths.
+    verdict = payload["ledger_verification"]
+    assert verdict["valid"] is True
+    assert verdict["entries"] == 1
+    assert verdict["errors"] == []
+    # The ledger hash covers the STAMPED assessment file exactly:
+    # stamping happened before ledgering, not after (FR-4.2/FR-8.3).
+    ledger_line = (stub_project / payload["ledger"]).read_text().splitlines()[0]
+    entry = json.loads(ledger_line)
+    canonical = json.dumps(
+        assessment, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    assert entry["payload"]["assessment_sha256"] == digest
+
+
+@requires_posix_stub
+def test_assess_no_ledger_stamps_file_and_reports_no_verdict(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    completed = _run_stubbed(
+        stub_project,
+        _stub_env(tmp_path),
+        "assess",
+        "--input",
+        "claims.json",
+        "--no-ledger",
+    )
+    assert completed.returncode == 1
+    payload = json.loads(completed.stdout)
+    assert payload["ledger"] is None
+    # No ledgering happened, so no verdict is invented (FR-8.2).
+    assert payload["ledger_verification"] is None
+    assessment = json.loads((stub_project / payload["assessment"]).read_text())
+    assert assessment["metadata"]["extension_version"] == run_aee._extension_version()
+    assert "ledger" not in assessment["metadata"]
+
+
+@requires_posix_stub
+def test_assess_second_run_verdict_counts_both_entries(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    env = _stub_env(tmp_path)
+    _run_stubbed(stub_project, env, "assess", "--input", "claims.json")
+    # The engine ledger refuses an exact-duplicate append (Spec 003
+    # FR-4.6), so the second run carries distinct content via the
+    # stub marker; two DISTINCT assessments must both chain.
+    completed = _run_stubbed(
+        stub_project,
+        dict(env, AEE_STUB_MARKER="second"),
+        "assess",
+        "--input",
+        "claims.json",
+    )
+    payload = json.loads(completed.stdout)
+    assert payload["ledger_verification"]["valid"] is True
+    assert payload["ledger_verification"]["entries"] == 2
+
+
+def _ledger_refuses_duplicates() -> bool:
+    """True when the importable engine ledger carries Spec 003
+    FR-4.6 (the allow_duplicate opt-in on append_assessment). The
+    released 1.4.0 ledger predates it and chains duplicates."""
+    try:
+        import inspect
+
+        from aee.ledger import HashChainLedger
+
+        return "allow_duplicate" in inspect.signature(
+            HashChainLedger.append_assessment
+        ).parameters
+    except (ImportError, AttributeError, ValueError):
+        return False
+
+
+@requires_posix_stub
+@pytest.mark.skipif(
+    not _ledger_refuses_duplicates(),
+    reason="importable engine ledger predates Spec 003 FR-4.6 duplicate refusal",
+)
+def test_assess_exact_replay_is_refused_like_the_engine_cli(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    # Spec 003 FR-4.6: the engine ledger refuses to record the same
+    # assessment content twice for one actor (the bare `aee assess`
+    # CLI refuses identically). The runner surfaces that as a clean
+    # exit-2 refusal — no traceback, no JSON summary, ledger intact.
+    env = _stub_env(tmp_path)
+    _run_stubbed(stub_project, env, "assess", "--input", "claims.json")
+    completed = _run_stubbed(stub_project, env, "assess", "--input", "claims.json")
+    assert completed.returncode == 2
+    assert completed.stdout == ""
+    assert "duplicate assessment" in completed.stderr
+    assert "Traceback" not in completed.stderr
+    ledger = (
+        stub_project / ".specify/extensions/aee/ledger/epistemic-ledger.jsonl"
+    )
+    assert len(ledger.read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_extension_version_matches_manifest() -> None:
+    import yaml
+
+    manifest = yaml.safe_load(
+        (Path(__file__).parents[1] / "extension.yml").read_text(encoding="utf-8")
+    )
+    assert run_aee._extension_version() == str(manifest["extension"]["version"])
