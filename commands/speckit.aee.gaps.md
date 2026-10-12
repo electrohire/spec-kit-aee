@@ -25,16 +25,18 @@ Accept `matrix=<path>`, `evidence=<dir>`, and optional `output=<path>`, `close=<
 Run:
 
 ```bash
-python .specify/extensions/aee/scripts/python/run_aee.py gaps --matrix <matrix> --evidence <evidence> --output <output>
+python .specify/extensions/aee/scripts/python/run_aee.py gaps --matrix "<matrix>" --evidence "<evidence>" --output "<output>"
 ```
 
 Manual closure does not validate evidence automatically. Inspect passing evidence first; then use the existing register as `--output` to close a specific gap:
 
 ```bash
-python .specify/extensions/aee/scripts/python/run_aee.py gaps --matrix <matrix> --evidence <evidence> --output <output> --close GAP-XXX
+python .specify/extensions/aee/scripts/python/run_aee.py gaps --matrix "<matrix>" --evidence "<evidence>" --output "<output>" --close GAP-XXX
 ```
 
-The adapter writes the gap register only when `output=<path>` is supplied; otherwise the engine prints it to stdout. Choose an explicit in-project path such as `GAPS.md`. Pass `--existing <prior-register>` when regenerating if you intend to preserve prior closed gaps. The adapter does not read the YAML reference configuration.
+The adapter writes the gap register only when `output=<path>` is supplied; otherwise the engine prints it to stdout. Choose an explicit in-project path such as `GAPS.md`. Pass `--existing "<prior-register>"` when regenerating if you intend to preserve prior closed gaps. The adapter does not read the YAML reference configuration.
+
+Evidence confinement is a runner-side pre-flight: before the engine runs, the adapter walks the evidence tree and refuses (exit 2, naming the offenders) any symlink and any entry resolving outside the project root, so out-of-root data can never close a gap. Keep evidence as real files inside the project.
 
 Report the open/closed counts and list any open gaps. Do not describe the register as proof of correctness — it tracks verification coverage only.
 

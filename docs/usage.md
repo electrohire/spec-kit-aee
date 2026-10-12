@@ -8,7 +8,9 @@ needed for these deterministic adapter operations.
 
 Copy `.specify/extensions/aee/templates/aee-claims.json` to `claims.json`. Use
 `cp` on macOS/Linux or `Copy-Item` in PowerShell. Edit the stable ID, requirement,
-boundary, and falsification test for your project. In this unreleased patch the template intentionally has no evidence. If you installed published v1.0.0, first replace its illustrative `evidence` list with `[]`, set `status` to `draft`, and set `uncertainty` to `insufficient_evidence`. Do not retain the sample load-test observation as your own result. The resulting unsupported claim should ask for recovery; a passing outcome is not the goal of this
+boundary, and falsification test for your project. The shipped template is born
+`draft` with empty evidence and `insufficient_evidence` uncertainty by design.
+Do not retain the sample load-test text as your own result. The resulting unsupported claim should ask for recovery; a passing outcome is not the goal of this
 first smoke check.
 
 ```bash
@@ -83,10 +85,16 @@ structured observed evidence from ordinary prose.
 
 ```bash
 python .specify/extensions/aee/scripts/python/run_aee.py verify
-python .specify/extensions/aee/scripts/python/run_aee.py gate --input <assessment-path-from-first-command>
+python .specify/extensions/aee/scripts/python/run_aee.py gate --input "<assessment-path-from-first-command>"
+python .specify/extensions/aee/scripts/python/run_aee.py gate --latest after_specify
 ```
 
 Replace the angle-bracket placeholder with the actual rich assessment path.
+`gate --latest <phase>` gates the assessment named by the pointer `assess`
+maintains (`assessments/latest-<phase>.json`); it refuses when no assessment
+exists for the phase and prints the assessment's age to stderr — a stale
+assessment gates exactly as readily as a fresh one, so read the age before
+trusting the verdict.
 Verify reports chain validity, entry count, head hash, and errors. A valid chain
 establishes continuity of retained records, not truth, identity, trusted time, or
 completeness before the first record.
@@ -112,9 +120,10 @@ assessment outcome. Do not globally suppress failures in CI to accommodate an
 expected recovery outcome: assert the expected outcome and inspect the artifacts.
 
 The JSON summaries printed by `assess`, `challenge`, `graph`, and
-`gaps --output` always include `aee_exit_code` and `ok`. An output path
+`gaps --output` always include `aee_exit_code`, `timed_out`, and `ok`. An output path
 is named only when the file was actually written during that run;
 otherwise the field is `null` (the runner never emits a phantom path).
+`assess` also names its `latest_pointer` (see the gate section above).
 `assess` also reports `evaluator_extension_present`: the Evaluator
 Contract result itself is produced by the engine, and the separate
 evaluator extension — needed only for compose/report — is optional.
@@ -198,10 +207,33 @@ environment overrides. Use explicit flags:
 
 `--project-root` is a global option and goes **before** the operation, for example
 `python <runner-path> --project-root <project-dir> assess --input claims.json`.
-Input and output paths are resolved relative to that root. Assessment/challenge
-filenames use second-resolution UTC timestamps: avoid concurrent same-phase runs
-in one project, since they can overwrite a same-second result. Archive results
-before force-reinstalling an extension. Do not commit private evidence or generated
-ledger data merely because it is under `.specify/`.
+Input and output paths are resolved relative to that root. Generated
+assessment/challenge/graph filenames carry a UTC timestamp with microsecond
+and random suffixes, so two runs in the same second never overwrite each
+other's files. Archive results before force-reinstalling an extension. Do
+not commit private evidence or generated ledger data merely because it is
+under `.specify/`.
+
+`--timeout <seconds>` is also global (default 600): every engine subprocess
+runs under it, and on expiry the runner kills the engine and returns exit 2
+with `timed_out: true` in the JSON summary (`aee_exit_code: null`) — a
+timeout is an error, never a scored verdict.
+
+## Hook expectations
+
+Hooks are optional prompts; each names the command it runs but binds no
+arguments, so the agent supplies them from this table:
+
+| Hook | Command | Expected artifact | Phase / inputs |
+| --- | --- | --- | --- |
+| `after_specify` | `speckit.aee.assess` | the feature's claims bundle (or spec, via `draft-claims` first) | `--phase after_specify` |
+| `after_plan` | `speckit.aee.assess` | the plan's claims bundle | `--phase after_plan` |
+| `after_tasks` | `speckit.aee.assess` | the task breakdown's claims bundle | `--phase after_tasks` |
+| `after_implement` | `speckit.aee.assess` | the implementation claims bundle | `--phase after_implement` |
+| `after_verify` | `speckit.aee.gaps` | verification matrix (default `docs/verification-matrix.md`) + evidence dir (default `evidence/`) | stop when the matrix is absent; evidence must be real in-project files (symlinks are refused) |
+
+After any assess hook, the freshest verdict for the phase is the one the
+`latest-<phase>` pointer names; gate with `gate --latest <phase>` rather
+than guessing a filename.
 
 See the README troubleshooting table and [security boundary](../SECURITY.md).

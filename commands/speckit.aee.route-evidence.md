@@ -38,7 +38,7 @@ rule:
 
 ```bash
 python .specify/extensions/aee/scripts/python/aee_token_economy.py route \
-  --file <path> --mode <mode> --query "<query>"
+  --file "<path>" --mode "<mode>" --query "<query>"
 ```
 
 Backend selection, in order:
@@ -46,12 +46,21 @@ Backend selection, in order:
 1. The upstream `token-router` script plus Ollama, when both are available.
    The local model is a line router, never a summarizer: it returns line
    ranges, and the helper extracts the exact raw slices.
-2. Deterministic fallback (`rg`/`grep` literal match windows) when
-   token-router or Ollama is absent. State the backend in the notes.
+2. Deterministic fallback (pure-Python literal match windows — no
+   external search tool is invoked) when token-router or Ollama is
+   absent. State the backend in the notes.
 
 When the helper answers `read_directly`, read the file directly; routing a
 small file wastes more than it saves. When it answers `no_matches`, sharpen
 the query or widen the window instead of inventing ranges.
+
+Trust and limits: the token-router is executed code, so the helper only
+runs a router found inside the project root or its parent — an
+out-of-tree `TOKEN_ROUTER_HOME` is ignored and routing falls back
+deterministically. When the router backend runs, the record names the
+router path and its SHA-256 (`router` field). Files over the byte cap
+(256 MB by default, `--max-file-bytes`) are refused with a slicing hint
+rather than loaded whole.
 
 ## AEE evidence rule
 

@@ -60,13 +60,13 @@ python -m pip install "applied-epistemic-engineering>=1.4.0,<2"
 aee --version
 # Optional, only for compose/report/route over the result:
 specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.0.0.zip
-specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.0.1.zip
+specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.2.0.zip
 specify extension list
 ```
 
-The commands above install the current published releases. This branch prepares
-**1.1.0 (unreleased)**; do not use a nonexistent `v1.1.0.zip` URL. To test these
-changes, clone this repository, check out the PR branch, then run
+The commands above install the current published releases (this adapter's
+archive tag always matches the version in `extension.yml`). To test
+unreleased changes, clone this repository, check out the PR branch, then run
 `specify extension add --dev /absolute/path/to/spec-kit-aee` from a disposable
 initialized project. Back up generated assessments before replacing an existing
 installation; `--force` can overwrite its extension directory.
@@ -80,7 +80,7 @@ make no model API calls. Your chosen coding agent has its own inference setup.
 The [step-by-step walkthrough](docs/usage.md) covers all ten commands, expected
 exit codes, output files, gap evidence format, and recovery. Start with the
 unsupported-claim template; replace its example requirement with your own and add
-real evidence only after inspecting it. The published v1.0.1 template ships with
+real evidence only after inspecting it. The published template ships with
 draft status and empty evidence. Copying the template is not evidence.
 
 The runner currently reads **CLI flags, not `aee-config.yml` or environment
