@@ -299,8 +299,6 @@ def test_live_assess_stamps_and_verifies_with_new_engine(
     default and advertises --no-ledger, so the runner must probe it,
     stamp extension_version BEFORE its own append, and report a valid
     ledger_verification whose hash covers the stamped file."""
-    import hashlib
-
     (live_project / "claims.json").write_text(
         json.dumps(
             {
@@ -349,13 +347,30 @@ def test_live_assess_stamps_and_verifies_with_new_engine(
     verdict = payload["ledger_verification"]
     assert verdict["valid"] is True and verdict["entries"] == 1
     entry = json.loads((live_project / payload["ledger"]).read_text().splitlines()[0])
-    canonical = json.dumps(
-        assessment, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    # The recorded digest is the engine's own content digest of the
+    # stamped assessment (Spec 003 FR-5.8: the wall-clock created_at
+    # stamp is excluded) — the same function the engine gate checks
+    # the file against, so writer and checker cannot drift. Computed
+    # in a subprocess so the digest comes from the engine checkout
+    # regardless of what this test process has imported.
+    digest_probe = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import json, sys\n"
+                "from aee.ledger import assessment_content_digest\n"
+                "print(assessment_content_digest(json.loads(open(sys.argv[1]).read())))"
+            ),
+            str(live_project / payload["assessment"]),
+        ],
+        env=_live_env(),
+        capture_output=True,
+        text=True,
+        check=False,
     )
-    assert (
-        entry["payload"]["assessment_sha256"]
-        == hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-    )
+    assert digest_probe.returncode == 0, digest_probe.stderr
+    assert entry["payload"]["assessment_sha256"] == digest_probe.stdout.strip()
 
 
 @requires_live_engine

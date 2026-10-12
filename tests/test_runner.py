@@ -161,6 +161,7 @@ if command == "assess":
         "outcome": "iterate",
         "claims": [],
         "metadata": {"engine_version": "1.4.0"},
+        "stub_marker": os.environ.get("AEE_STUB_MARKER", ""),
     }))
     Path(flag("--evaluator-output")).write_text(json.dumps({"outcome": "iterate"}))
     sys.exit(1)
@@ -571,10 +572,60 @@ def test_assess_second_run_verdict_counts_both_entries(
 ) -> None:
     env = _stub_env(tmp_path)
     _run_stubbed(stub_project, env, "assess", "--input", "claims.json")
-    completed = _run_stubbed(stub_project, env, "assess", "--input", "claims.json")
+    # The engine ledger refuses an exact-duplicate append (Spec 003
+    # FR-4.6), so the second run carries distinct content via the
+    # stub marker; two DISTINCT assessments must both chain.
+    completed = _run_stubbed(
+        stub_project,
+        dict(env, AEE_STUB_MARKER="second"),
+        "assess",
+        "--input",
+        "claims.json",
+    )
     payload = json.loads(completed.stdout)
     assert payload["ledger_verification"]["valid"] is True
     assert payload["ledger_verification"]["entries"] == 2
+
+
+def _ledger_refuses_duplicates() -> bool:
+    """True when the importable engine ledger carries Spec 003
+    FR-4.6 (the allow_duplicate opt-in on append_assessment). The
+    released 1.4.0 ledger predates it and chains duplicates."""
+    try:
+        import inspect
+
+        from aee.ledger import HashChainLedger
+
+        return "allow_duplicate" in inspect.signature(
+            HashChainLedger.append_assessment
+        ).parameters
+    except (ImportError, AttributeError, ValueError):
+        return False
+
+
+@requires_posix_stub
+@pytest.mark.skipif(
+    not _ledger_refuses_duplicates(),
+    reason="importable engine ledger predates Spec 003 FR-4.6 duplicate refusal",
+)
+def test_assess_exact_replay_is_refused_like_the_engine_cli(
+    tmp_path: Path, stub_project: Path
+) -> None:
+    # Spec 003 FR-4.6: the engine ledger refuses to record the same
+    # assessment content twice for one actor (the bare `aee assess`
+    # CLI refuses identically). The runner surfaces that as a clean
+    # exit-2 refusal — no traceback, no JSON summary, ledger intact.
+    env = _stub_env(tmp_path)
+    _run_stubbed(stub_project, env, "assess", "--input", "claims.json")
+    completed = _run_stubbed(stub_project, env, "assess", "--input", "claims.json")
+    assert completed.returncode == 2
+    assert completed.stdout == ""
+    assert "duplicate assessment" in completed.stderr
+    assert "Traceback" not in completed.stderr
+    ledger = (
+        stub_project / ".specify/extensions/aee/ledger/epistemic-ledger.jsonl"
+    )
+    assert len(ledger.read_text(encoding="utf-8").splitlines()) == 1
 
 
 def test_extension_version_matches_manifest() -> None:
