@@ -23,13 +23,13 @@ def test_manifest_uses_supported_dependency_metadata() -> None:
     tools = {tool["name"]: tool for tool in requires["tools"]}
     required = {name for name, tool in tools.items() if tool["required"]}
     optional = {name for name, tool in tools.items() if not tool["required"]}
-    assert required == {"python", "aee"}
+    # Spec 005: the evaluator extension is a required companion.
+    assert required == {"python", "aee", "spec-kit-evaluator"}
     assert optional == {
         "rtk",
         "headroom",
         "token-router",
         "ollama",
-        "spec-kit-evaluator",
     }
     assert "1.5.0" in SpecifierSet(tools["aee"]["version"])
     assert "1.4.0" not in SpecifierSet(tools["aee"]["version"])  # Spec 004 P5-E1 floor
@@ -48,6 +48,12 @@ def test_manifest_uses_supported_dependency_metadata() -> None:
 def project(tmp_path: Path) -> Path:
     assert shutil.which("aee"), "Activate the environment containing requirements/dev.txt"
     shutil.copyfile(ROOT / "templates/aee-claims.json", tmp_path / "claims.json")
+    # Spec 005: assess requires the evaluator companion installed.
+    evaluator = tmp_path / ".specify" / "extensions" / "evaluator"
+    evaluator.mkdir(parents=True)
+    (evaluator / "extension.yml").write_text(
+        "extension:\n  id: evaluator\n", encoding="utf-8"
+    )
     return tmp_path
 
 

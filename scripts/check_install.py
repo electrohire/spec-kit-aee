@@ -17,10 +17,12 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
 import threading
+from collections.abc import Callable
 from pathlib import Path
 
 import yaml
@@ -54,6 +56,31 @@ class CheckFailed(RuntimeError):
 def check(condition: bool, message: str) -> None:
     if not condition:
         raise CheckFailed(message)
+
+
+def _retry_after_clearing_readonly(
+    func: Callable[[str], object], path: str, _exc: object
+) -> None:
+    """rmtree error handler: clear the read-only bit and retry the call.
+
+    The scratch install copies the evaluator extension *with* its
+    `.git` directory, whose object files are read-only. Windows
+    refuses to unlink a read-only file (POSIX unlink ignores the
+    bit), so removal of the real installed tree fails there with
+    WinError 5 unless the bit is cleared first. The third argument is
+    the exception (3.12+ ``onexc``) or an exc_info tuple (``onerror``);
+    it is not needed either way.
+    """
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
+def _rmtree(root: Path) -> None:
+    """Remove a tree that may contain a copied `.git`, on any OS."""
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(root, onexc=_retry_after_clearing_readonly)
+    else:
+        shutil.rmtree(root, onerror=_retry_after_clearing_readonly)
 
 
 def main() -> None:
@@ -217,6 +244,35 @@ def _run_checks(
         check(
             "Traceback" not in refused.stderr and "refused:" in refused.stderr,
             f"missing input must refuse cleanly: {refused.stderr}",
+        )
+        # Spec 005 (ER-04): the evaluator extension is a required
+        # companion, enforced by the runner itself. Remove it from the
+        # installed project and the installed runner's assess must
+        # refuse — exit 2, naming the missing extension — instead of
+        # scoring without the common evaluator.
+        evaluator_dir = root / ".specify" / "extensions" / "evaluator"
+        assessments_dir = root / ".specify" / "extensions" / "aee" / "assessments"
+        before = {path.name for path in assessments_dir.glob("*.json")}
+        _rmtree(evaluator_dir)
+        refused = subprocess.run(
+            [sys.executable, runner, "assess", "--input", "claims.json"],
+            cwd=root, env=env, text=True, encoding="utf-8",
+            capture_output=True, check=False,
+        )
+        check(
+            refused.returncode == 2,
+            "assess without the evaluator extension must exit 2, got "
+            f"{refused.returncode}",
+        )
+        check(
+            "spec-kit-evaluator" in refused.stderr
+            and "Traceback" not in refused.stderr,
+            "assess without the evaluator extension must refuse cleanly "
+            f"naming it: {refused.stderr}",
+        )
+        check(
+            {path.name for path in assessments_dir.glob("*.json")} == before,
+            "a refused assess must not write a new assessment",
         )
 
 

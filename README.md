@@ -33,12 +33,12 @@ commands belong in your coding agent's chat, not in PowerShell or Bash.
 | Spec Kit | `specify-cli>=1.0.0` | [github/spec-kit](https://github.com/github/spec-kit): project and command installation |
 | Python | `python>=3.11` | Runs the adapter and engine |
 | AEE engine | `applied-epistemic-engineering>=1.5.0,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps |
-| Evaluator Contract (optional) | extension ID `evaluator`, version `>=1.0.0,<2` | [electrohire/spec-kit-evaluator](https://github.com/electrohire/spec-kit-evaluator): composition, reporting, and routing over the engine-produced result; not invoked by the runner |
+| Evaluator extension (required companion) | extension ID `evaluator`, version `>=1.0.0,<2` | [electrohire/spec-kit-evaluator](https://github.com/electrohire/spec-kit-evaluator): the common evaluator this adapter's results are composed through — composition, reporting, and routing over the engine-produced result; `assess` refuses without it |
 | This adapter | extension ID `aee` | [electrohire/spec-kit-aee](https://github.com/electrohire/spec-kit-aee): ten agent commands and optional lifecycle hooks |
 
-The engine needs 1.4.0 for the policy-gate, reliability, and review CLI surface (1.0.2 introduced the `gaps` command), and the runner enforces that floor itself: at startup it checks `aee --version` against `>=1.5.0,<2` and refuses with exit 2 — naming the found and required versions — rather than scoring with an out-of-range engine. The Evaluator Contract result is produced by the engine itself; the Evaluator extension is **not** a runtime dependency of this adapter (the runner never invokes it) and is only needed for its own compose/report/route commands. It is a Spec Kit extension, **not** a PyPI package or shell executable. Spec Kit's
+The engine needs 1.4.0 for the policy-gate, reliability, and review CLI surface (1.0.2 introduced the `gaps` command), and the runner enforces that floor itself: at startup it checks `aee --version` against `>=1.5.0,<2` and refuses with exit 2 — naming the found and required versions — rather than scoring with an out-of-range engine. The Evaluator Contract result is produced by the engine itself, and the evaluator extension is a **required companion** to this adapter: AEE is one evaluator among many by design, and its results are composed through that common evaluator so every evaluator's output is handled the same way. The runner enforces the pairing itself — `assess` refuses with exit 2, naming the missing extension, when the evaluator extension is not installed in the project. The evaluator extension is a Spec Kit extension, **not** a PyPI package or shell executable. Spec Kit's
 `requires.tools` metadata documents dependencies; it does not install them or
-verify their versions. Install the engine explicitly before this adapter, and the evaluator extension only if you want composition/reporting.
+verify their versions, which is why the runner checks this one itself. Install the engine explicitly before this adapter, and install the evaluator extension together with it — the pair is one system.
 
 For a new project, install Spec Kit using its [official installation
 instructions](https://github.com/github/spec-kit#-get-started), then run
@@ -58,9 +58,9 @@ when launching your coding agent so it can find both `python` and `aee`.
 ```bash
 python -m pip install "applied-epistemic-engineering>=1.5.0,<2"
 aee --version
-# Optional, only for compose/report/route over the result:
-specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.0.0.zip
-specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.3.0.zip
+# Required companion: the common evaluator AEE's results are composed through.
+specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.1.0.zip
+specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.4.0.zip
 specify extension list
 ```
 

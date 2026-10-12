@@ -115,7 +115,7 @@ Assessment/gate exit codes:
 | 1 | `iterate`, `clarify`, or `gather_evidence`; recovery is needed |
 | 2 | `block` (gate), or an error — never a scored assess/challenge verdict |
 
-Errors include runner refusals (missing, out-of-root, or symlinked paths; an invalid phase; a missing `aee`; or an installed `aee` version outside the required `>=1.5.0,<2`, which the runner checks itself at startup and reports by name) and engine-reported input/usage errors. Runner refusals print `refused: ...` to stderr and never a Python traceback. Do not interpret every nonzero process code as a scored
+Errors include runner refusals (missing, out-of-root, or symlinked paths; an invalid phase; a missing `aee`; an installed `aee` version outside the required `>=1.5.0,<2`, which the runner checks itself at startup and reports by name; or `assess` run without the required evaluator extension) and engine-reported input/usage errors. Runner refusals print `refused: ...` to stderr and never a Python traceback. Do not interpret every nonzero process code as a scored
 assessment outcome. Do not globally suppress failures in CI to accommodate an
 expected recovery outcome: assert the expected outcome and inspect the artifacts.
 
@@ -126,11 +126,14 @@ otherwise the field is `null` (the runner never emits a phantom path).
 `assess` also names its `latest_pointer` (see the gate section above).
 `assess` also reports `evaluator_extension_present`: the Evaluator
 Contract result itself is produced by the engine, and the separate
-evaluator extension — needed only for compose/report — is optional.
+evaluator extension is a required companion — `assess` refuses
+(exit 2, naming the missing extension) when it is not installed in
+the project, because composing results through the common evaluator
+is part of the standard flow.
 
 For multiple evaluator results, use `/speckit.evaluator.compose phase=after_specify
 strategy=strict`, then `/speckit.evaluator.report phase=after_specify format=terminal`.
-These agent commands come from the separate Evaluator extension. AEE does not
+These agent commands come from the evaluator extension. AEE does not
 silently compose results or run every other evaluator for you.
 
 ## Generate a gap register
