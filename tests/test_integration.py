@@ -23,8 +23,14 @@ def test_manifest_uses_supported_dependency_metadata() -> None:
     tools = {tool["name"]: tool for tool in requires["tools"]}
     required = {name for name, tool in tools.items() if tool["required"]}
     optional = {name for name, tool in tools.items() if not tool["required"]}
-    assert required == {"python", "aee", "spec-kit-evaluator"}
-    assert optional == {"rtk", "headroom", "token-router", "ollama"}
+    assert required == {"python", "aee"}
+    assert optional == {
+        "rtk",
+        "headroom",
+        "token-router",
+        "ollama",
+        "spec-kit-evaluator",
+    }
     assert "1.4.0" in SpecifierSet(tools["aee"]["version"])
     assert "1.0.2" not in SpecifierSet(tools["aee"]["version"])
     for group in ("commands", "templates", "scripts", "config"):

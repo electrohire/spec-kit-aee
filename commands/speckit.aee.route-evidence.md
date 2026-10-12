@@ -24,8 +24,12 @@ instruction references such as `AGENTS.md` or `agent-context/*.md` are
 
 1. The target file must be inside the project root. Never follow symlinks or
    read outside the project root.
-2. Never route secrets: files whose names suggest credentials, private keys,
-   service accounts, or `.env` content are refused fail-closed.
+2. Never route secrets: any **path component** (directories included,
+   not just the file name) suggesting credentials, private keys,
+   service accounts, or `.env` content is refused fail-closed, with
+   `_`/`-` spellings treated alike. The guard is name-based: it cannot
+   detect secret content hiding under an innocuous name, so do not
+   route a file whose contents you have not accounted for.
 
 ## Execution
 

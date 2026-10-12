@@ -1,15 +1,58 @@
 #!/usr/bin/env python3
-"""Path-safe Spec Kit adapter for the external ``aee`` command."""
+"""Path-safe Spec Kit adapter for the external ``aee`` command.
+
+Exit-code contract (runner level)
+---------------------------------
+The runner passes the engine's scored verdicts through unchanged and
+reserves one code for every error, so a caller that only sees the exit
+code can never mistake a failure for a scored outcome:
+
+- ``0`` — engine outcome ``pass``/``warn``, or a successful non-scored
+  operation (graph, gaps, verify, review).
+- ``1`` — engine scored outcome ``iterate``/``clarify``/
+  ``gather_evidence`` (assess, challenge, gate). Recovery is needed;
+  this is a verdict, not an error.
+- ``2`` — an error, never a scored assess/challenge verdict: runner
+  refusals (missing, out-of-root, or symlinked paths; invalid phase;
+  missing ``aee``; an ``aee`` version outside the required range) and
+  engine-reported input/usage errors. (The engine's own ``gate``
+  command also uses ``2`` for a ``block`` verdict; that is the
+  engine's documented gate semantics, passed through unchanged.)
+  Runner refusals print ``refused: ...`` to stderr and never leak a
+  Python traceback.
+
+JSON output contract
+--------------------
+Subcommands that print a JSON summary (assess, challenge, graph, and
+gaps with ``--output``) always include ``aee_exit_code`` and ``ok``.
+Output paths are named only when the file was actually written during
+the invocation; otherwise the field is ``null`` — the runner never
+emits a path to a file that does not exist.
+
+Version contract
+----------------
+At startup the runner runs ``aee --version`` and refuses (exit 2) when
+the installed engine is outside ``REQUIRED_AEE_VERSION``, naming both
+the found and required versions. The range mirrors ``extension.yml``
+(``requires.tools`` entry ``aee``); keep the two in sync.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+
+# Mirrors extension.yml requires.tools[aee]. Keep in sync.
+REQUIRED_AEE_VERSION = ">=1.4.0,<2"
+_AEE_VERSION_MIN = (1, 4, 0)
+_AEE_VERSION_MAX = (2, 0, 0)  # exclusive
+_VERSION_PATTERN = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -63,33 +106,115 @@ def parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
-    root = args.project_root.resolve(strict=True)
-    _reject_symlink_chain(root, root)
-    executable = shutil.which("aee")
-    if executable is None:
-        print(
-            "Missing required 'aee' command. Install applied-epistemic-engineering>=1.4.0,<2.",
-            file=sys.stderr,
-        )
+    try:
+        root = args.project_root.resolve(strict=True)
+        _reject_symlink_chain(root, root)
+        executable = shutil.which("aee")
+        if executable is None:
+            print(
+                "refused: missing required 'aee' command. Install "
+                f"applied-epistemic-engineering{REQUIRED_AEE_VERSION}.",
+                file=sys.stderr,
+            )
+            return 2
+        _check_aee_version(executable)
+        if args.command == "assess":
+            return _assess(executable, root, args)
+        if args.command == "challenge":
+            return _challenge(executable, root, args)
+        if args.command == "graph":
+            return _graph(executable, root, args)
+        if args.command == "verify":
+            return _verify(executable, root, args)
+        if args.command == "gate":
+            return _gate(executable, root, args)
+        if args.command == "gaps":
+            return _gaps(executable, root, args)
+        if args.command == "review":
+            return _review(executable, root, args)
+        raise AssertionError("unreachable")
+    except (ValueError, OSError) as exc:
+        # Runner refusals and OS-level failures are errors (exit 2),
+        # never scored verdicts, and never surface as tracebacks.
+        print(f"refused: {exc}", file=sys.stderr)
         return 2
-    if args.command == "assess":
-        return _assess(executable, root, args)
-    if args.command == "challenge":
-        return _challenge(executable, root, args)
-    if args.command == "graph":
-        return _graph(executable, root, args)
-    if args.command == "verify":
-        return _verify(executable, root, args)
-    if args.command == "gate":
-        value = _safe_existing(root, args.input)
-        return subprocess.run(
-            [executable, "gate", "--input", str(value)], check=False
-        ).returncode
-    if args.command == "gaps":
-        return _gaps(executable, root, args)
-    if args.command == "review":
-        return _review(executable, root, args)
-    raise AssertionError("unreachable")
+
+
+def _parse_aee_version(text: str) -> tuple[int, int, int] | None:
+    match = _VERSION_PATTERN.search(text)
+    if match is None:
+        return None
+    return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+
+
+def _aee_version_satisfies(version: tuple[int, int, int]) -> bool:
+    return _AEE_VERSION_MIN <= version < _AEE_VERSION_MAX
+
+
+def _check_aee_version(executable: str) -> None:
+    """Refuse to run against an engine outside the declared range."""
+    try:
+        completed = subprocess.run(
+            [executable, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError(
+            f"could not run 'aee --version' to verify the engine version "
+            f"(required {REQUIRED_AEE_VERSION}): {exc}"
+        ) from exc
+    version = _parse_aee_version(f"{completed.stdout}\n{completed.stderr}")
+    if completed.returncode != 0 or version is None:
+        raise ValueError(
+            "could not determine the installed aee version from "
+            f"'aee --version' (required {REQUIRED_AEE_VERSION}); "
+            "reinstall applied-epistemic-engineering"
+            f"{REQUIRED_AEE_VERSION}."
+        )
+    if not _aee_version_satisfies(version):
+        found = ".".join(str(part) for part in version)
+        raise ValueError(
+            f"aee version {found} does not satisfy the required range "
+            f"{REQUIRED_AEE_VERSION} declared in extension.yml; install "
+            f"applied-epistemic-engineering{REQUIRED_AEE_VERSION}."
+        )
+
+
+def _snapshot(path: Path) -> tuple[int, int] | None:
+    """(size, mtime_ns) for an existing file, else None."""
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return (stat.st_size, stat.st_mtime_ns)
+
+
+def _written(path: Path, before: tuple[int, int] | None) -> bool:
+    """True when the file exists now and was (re)written since `before`."""
+    after = _snapshot(path)
+    return after is not None and after != before
+
+
+def _rel_or_none(root: Path, path: Path, before: tuple[int, int] | None) -> str | None:
+    """Project-relative path when the file was written, else None.
+
+    The runner only ever names files the engine actually wrote during
+    this invocation; a pre-existing or never-created file is reported
+    as null instead of a phantom path.
+    """
+    if not _written(path, before):
+        return None
+    return path.relative_to(root).as_posix()
+
+
+def _gate(executable: str, root: Path, args: argparse.Namespace) -> int:
+    value = _safe_existing(root, args.input)
+    return subprocess.run(
+        [executable, "gate", "--input", str(value)], check=False
+    ).returncode
 
 
 def _review(executable: str, root: Path, args: argparse.Namespace) -> int:
@@ -126,25 +251,49 @@ def _gaps(executable: str, root: Path, args: argparse.Namespace) -> int:
     if args.existing:
         existing = _safe_existing(root, args.existing)
         command.extend(["--existing", str(existing)])
+    output: Path | None = None
+    before: tuple[int, int] | None = None
     if args.output:
+        if args.close:
+            # In --close mode the engine updates an existing register;
+            # refuse a mistyped target here instead of surfacing an
+            # engine error for a file that was never a register.
+            _safe_existing(root, args.output)
         output = _safe_output(root, args.output)
+        before = _snapshot(output)
         command.extend(["--output", str(output)])
-    completed = subprocess.run(command, check=False)
-    if args.output:
-        print(
-            json.dumps(
-                {
-                    "gaps": output.relative_to(root).as_posix(),
-                    "aee_exit_code": completed.returncode,
-                },
-                indent=2,
-            )
+    if output is None:
+        return subprocess.run(command, check=False).returncode
+    # With --output the engine's stdout chatter goes to stderr so the
+    # runner's stdout stays a single machine-parseable JSON document.
+    completed = subprocess.run(command, check=False, capture_output=True, text=True)
+    if completed.stdout:
+        print(completed.stdout, file=sys.stderr, end="")
+    if completed.stderr:
+        print(completed.stderr, file=sys.stderr, end="")
+    gaps_rel = _rel_or_none(root, output, before)
+    print(
+        json.dumps(
+            {
+                "gaps": gaps_rel,
+                "aee_exit_code": completed.returncode,
+                "ok": completed.returncode == 0 and gaps_rel is not None,
+            },
+            indent=2,
         )
+    )
     return completed.returncode
 
 
 def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
     source = _safe_existing(root, args.input)
+    # Sample evaluator-extension presence BEFORE creating outputs: the
+    # runner itself creates .specify/extensions/evaluator/results/ for
+    # the engine-produced contract result, so checking afterwards
+    # would always report a phantom installation (RT3-04).
+    evaluator_extension_present = (
+        root / ".specify" / "extensions" / "evaluator"
+    ).is_dir()
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     phase = _safe_segment(args.phase)
     assessment = _safe_output(
@@ -195,14 +344,30 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
             root, Path(".specify/extensions/aee/ledger/epistemic-ledger.jsonl")
         )
         command.extend(["--ledger", str(ledger)])
+    before = {
+        "assessment": _snapshot(assessment),
+        "evaluator": _snapshot(evaluator),
+        "ledger": _snapshot(ledger) if ledger else None,
+    }
+    # The Evaluator Contract result named below is produced by the
+    # engine itself (--evaluator-output); the separate spec-kit-evaluator
+    # extension is not invoked by this runner. The JSON reports whether
+    # it happens to be installed so consumers know compose/report are
+    # available.
     completed = subprocess.run(command, check=False)
     print(
         json.dumps(
             {
-                "assessment": assessment.relative_to(root).as_posix(),
-                "evaluator_result": evaluator.relative_to(root).as_posix(),
-                "ledger": ledger.relative_to(root).as_posix() if ledger else None,
+                "assessment": _rel_or_none(root, assessment, before["assessment"]),
+                "evaluator_result": _rel_or_none(
+                    root, evaluator, before["evaluator"]
+                ),
+                "evaluator_extension_present": evaluator_extension_present,
+                "ledger": (
+                    _rel_or_none(root, ledger, before["ledger"]) if ledger else None
+                ),
                 "aee_exit_code": completed.returncode,
+                "ok": completed.returncode in (0, 1),
             },
             indent=2,
         )
@@ -233,12 +398,14 @@ def _challenge(executable: str, root: Path, args: argparse.Namespace) -> int:
         "--actor",
         args.actor,
     ]
+    before = _snapshot(output)
     completed = subprocess.run(command, check=False)
     print(
         json.dumps(
             {
-                "challenge": output.relative_to(root).as_posix(),
+                "challenge": _rel_or_none(root, output, before),
                 "aee_exit_code": completed.returncode,
+                "ok": completed.returncode in (0, 1),
             },
             indent=2,
         )
@@ -252,11 +419,22 @@ def _graph(executable: str, root: Path, args: argparse.Namespace) -> int:
     output = _safe_output(
         root, Path(f".specify/extensions/aee/graphs/aee-claims-{stamp}.mmd")
     )
+    before = _snapshot(output)
     completed = subprocess.run(
         [executable, "graph", "--input", str(source), "--output", str(output)],
         check=False,
     )
-    print(json.dumps({"graph": output.relative_to(root).as_posix()}, indent=2))
+    graph_rel = _rel_or_none(root, output, before)
+    print(
+        json.dumps(
+            {
+                "graph": graph_rel,
+                "aee_exit_code": completed.returncode,
+                "ok": completed.returncode == 0 and graph_rel is not None,
+            },
+            indent=2,
+        )
+    )
     return completed.returncode
 
 
@@ -325,7 +503,12 @@ def _safe_segment(value: str) -> str:
         char not in "abcdefghijklmnopqrstuvwxyz0123456789_" for char in value
     ):
         raise ValueError(f"invalid phase: {value!r}")
-    return value if value.startswith("after_") else f"after_{value}"
+    normalized = value if value.startswith("after_") else f"after_{value}"
+    if normalized == "after_":
+        # A bare "after_" names no lifecycle phase; the engine would
+        # reject it later with a less clear error.
+        raise ValueError(f"invalid phase: {value!r}")
+    return normalized
 
 
 if __name__ == "__main__":

@@ -45,19 +45,27 @@ SAVINGS_POLICY = (
     "unavailable."
 )
 
-# Basename fragments that fail closed: routing secrets would put them in
-# model context. This list is intentionally conservative.
+# Name fragments that fail closed: routing secrets would put them in
+# model context. Matching is done per path component (not just the
+# basename), with underscores normalized to hyphens, so a secret-bearing
+# directory or an underscore spelling cannot smuggle a file past the
+# guard (RT3-06). This list is intentionally conservative.
 _SECRET_FRAGMENTS = (
     ".env",
     ".pem",
     ".key",
-    "id_rsa",
-    "id_ed25519",
+    "id-rsa",
+    "id-ed25519",
     "credentials",
     "secret",
     "service-account",
     "private-key",
 )
+
+# Suffixes that mark a component as secret-bearing wherever they sit in
+# the path, including compound names such as "tls.key.bak" handled by
+# the fragment check above and plain "server.pem" handled here.
+_SECRET_SUFFIXES = (".pem", ".key", ".p12", ".pfx", ".jks", ".keystore")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -169,8 +177,23 @@ def _status(root: Path, args: argparse.Namespace) -> int:
 
 
 def _looks_like_secret(path: Path) -> bool:
-    lowered = path.name.lower()
-    return any(fragment in lowered for fragment in _SECRET_FRAGMENTS)
+    """Fail-closed name check over EVERY component of the path.
+
+    The basename alone is not enough: `credentials/notes.log` and
+    `private_key.log` both routed secret slices before this check
+    looked at directory components and normalized `_` to `-`
+    (RT3-06). The check is name-based by design — it cannot detect
+    secret *content* under an innocuous name; see
+    commands/speckit.aee.route-evidence.md for the residual risk.
+    """
+    for part in path.parts:
+        lowered = part.lower()
+        normalized = lowered.replace("_", "-")
+        if any(fragment in normalized for fragment in _SECRET_FRAGMENTS):
+            return True
+        if lowered.endswith(_SECRET_SUFFIXES):
+            return True
+    return False
 
 
 def _route(root: Path, args: argparse.Namespace) -> int:
