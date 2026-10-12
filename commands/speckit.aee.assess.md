@@ -18,8 +18,8 @@ Optional: `policy=<true|false>` attaches the engine's policy gates (per-claim AC
 
 ## Prerequisites
 
-1. Confirm the `aee` command is available and reports version >=1.4.0,<2. If absent, stop and recommend `python -m pip install "applied-epistemic-engineering>=1.4.0,<2"`.
-2. Confirm Evaluator Contract 1.x from https://github.com/electrohire/spec-kit-evaluator is installed at `.specify/extensions/evaluator/`. If absent, stop and recommend `specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.0.0.zip` before this extension.
+1. Confirm the `aee` command is available and reports version >=1.4.0,<2. If absent, stop and recommend `python -m pip install "applied-epistemic-engineering>=1.4.0,<2"`. The runner enforces this itself at startup: it runs `aee --version` and refuses with exit 2, naming the found and required versions, so a below-floor engine cannot silently produce incomparable scores.
+2. The Evaluator Contract result is produced by the AEE engine itself (its `--evaluator-output`); the separate Evaluator extension from https://github.com/electrohire/spec-kit-evaluator is **not** required to run assess and the runner never invokes it. Install it only when you want its compose/report/route commands over the result. The runner reports `evaluator_extension_present` in its JSON so you can tell whether those commands are available.
 3. Resolve the project root and source artifact. Never follow symlinks or read outside the project root.
 
 Use threshold `0.70` when omitted. The adapter does not load YAML configuration; pass explicit flags for overrides. The engine repository is https://github.com/electrohire/applied-epistemic-engineering.
@@ -38,7 +38,7 @@ The adapter writes a rich assessment under `.specify/extensions/aee/assessments/
 
 Report the outcome, confidence threshold, claim/finding counts, unresolved contradictions, recommended recovery, and exact output paths. When the policy is attached, also report the verdict counts (accept / challenge / abstain) and name the abstained claims — an abstention is a deliberate non-verdict, not a low score. Do not describe an assessment as proof, certification, or truth.
 
-When other evaluators ran at the same phase, recommend `__SPECKIT_COMMAND_EVALUATOR_COMPOSE__ phase=<phase> strategy=strict`.
+When other evaluators ran at the same phase and the runner reported `evaluator_extension_present: true`, recommend `__SPECKIT_COMMAND_EVALUATOR_COMPOSE__ phase=<phase> strategy=strict`.
 
 ## Claim field vocabulary
 

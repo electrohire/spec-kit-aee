@@ -52,7 +52,10 @@ def test_required_tools_unchanged(manifest: dict) -> None:
     tools = _tools(manifest)
     assert tools["python"]["required"] is True
     assert tools["aee"]["required"] is True
-    assert tools["spec-kit-evaluator"]["required"] is True
+    # RT3-04: spec-kit-evaluator is NOT a runtime dependency — the
+    # runner never invokes it; the engine produces the Evaluator
+    # Contract result itself. It must stay optional.
+    assert tools["spec-kit-evaluator"]["required"] is False
 
 
 def test_new_commands_declared_with_short_descriptions(manifest: dict) -> None:

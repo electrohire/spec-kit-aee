@@ -63,12 +63,19 @@ Assessment/gate exit codes:
 | --- | --- |
 | 0 | `pass` or `warn`; inspect warnings before proceeding |
 | 1 | `iterate`, `clarify`, or `gather_evidence`; recovery is needed |
-| 2 | `block` or an engine-reported input/usage error |
+| 2 | `block` (gate), or an error — never a scored assess/challenge verdict |
 
-The adapter also reports ordinary Python/process errors for missing or invalid
-paths; inspect stderr. Do not interpret every nonzero process code as a scored
+Errors include runner refusals (missing, out-of-root, or symlinked paths; an invalid phase; a missing `aee`; or an installed `aee` version outside the required `>=1.4.0,<2`, which the runner checks itself at startup and reports by name) and engine-reported input/usage errors. Runner refusals print `refused: ...` to stderr and never a Python traceback. Do not interpret every nonzero process code as a scored
 assessment outcome. Do not globally suppress failures in CI to accommodate an
 expected recovery outcome: assert the expected outcome and inspect the artifacts.
+
+The JSON summaries printed by `assess`, `challenge`, `graph`, and
+`gaps --output` always include `aee_exit_code` and `ok`. An output path
+is named only when the file was actually written during that run;
+otherwise the field is `null` (the runner never emits a phantom path).
+`assess` also reports `evaluator_extension_present`: the Evaluator
+Contract result itself is produced by the engine, and the separate
+evaluator extension — needed only for compose/report — is optional.
 
 For multiple evaluator results, use `/speckit.evaluator.compose phase=after_specify
 strategy=strict`, then `/speckit.evaluator.report phase=after_specify format=terminal`.
