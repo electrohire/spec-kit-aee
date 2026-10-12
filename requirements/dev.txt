@@ -5,8 +5,8 @@ annotated-doc==0.0.5 \
     --hash=sha256:c7e58ce09192557605d8bbd92836d7e1d520ac9580096042c0bfd197efacf1bb
     # via typer
 applied-epistemic-engineering==1.5.0 \
-    --hash=sha256:8a8efa67e1d46ed1e27d5f9090b81256cb885d07774bd71d95ccc1a16802de3b \
-    --hash=sha256:a29cd53cf15f0e848abecef9efe4e20daa8f4756d2dc037f5e890209b7144dd5
+    --hash=sha256:3eef8f41128972c6ae4348296a830a04ce1ec9ad1248dee29e4159e6252e7fbb \
+    --hash=sha256:37df25b35cb4293bc415aa9168c8fdd3aac9c87a9e1e17c8d8ddd05a87eb1aa5
     # via -r dev.in
 click==8.5.0 \
     --hash=sha256:255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360 \
