@@ -342,7 +342,7 @@ def test_live_assess_stamps_and_verifies_with_new_engine(
     payload = json.loads(completed.stdout)
     assessment = json.loads((live_project / payload["assessment"]).read_text())
     assert assessment["metadata"]["engine_version"] == "1.5.0"  # the realigned engine (Spec 004 P5-E1)
-    assert assessment["metadata"]["extension_version"] == "1.2.0"
+    assert assessment["metadata"]["extension_version"] == "1.3.0"
     assert assessment["metadata"]["ledger"]["mode"] == "custom"
     verdict = payload["ledger_verification"]
     assert verdict["valid"] is True and verdict["entries"] == 1

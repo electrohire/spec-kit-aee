@@ -60,7 +60,7 @@ python -m pip install "applied-epistemic-engineering>=1.5.0,<2"
 aee --version
 # Optional, only for compose/report/route over the result:
 specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.0.0.zip
-specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.2.0.zip
+specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.3.0.zip
 specify extension list
 ```
 

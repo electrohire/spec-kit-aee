@@ -2,7 +2,7 @@
 
 All notable changes follow Semantic Versioning.
 
-## Unreleased
+## 1.3.0 - 2026-10-12
 
 - RT3 remediation (specs/rt3-remediation): `gaps` refuses symlinked or
   out-of-root evidence in a runner-side pre-flight instead of letting it
