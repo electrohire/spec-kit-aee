@@ -4,9 +4,17 @@
 
 **Created**: 2026-10-12
 
-**Status**: Draft — claims assessed before implementation (after_specify; see
-`assessment.json`). Implementation follows in this branch; the after-state is
-recorded in `claims-after-implement.json` / `assessment-after-implement.json`.
+**Status**: Implemented on this branch (2026-10-12). Before: 12 problem
+claims at 1.0/high, outcome `iterate` (`assessment.json`, after_specify).
+After: 12 fix claims at 1.0/high with all score components 1.0
+(`claims-after-implement.json`, `assessment-after-implement.json`,
+after_implement) — the outcome remains `iterate` because the challenge
+projection still raises decomposition failure modes on the compound
+claims (33 after vs 28 before; 0 claims below the 0.70 threshold in
+both runs), not because any fix is unscored or failing. Suite: 92 → 119
+passed, 3 skipped; `ruff check scripts tests` clean; check_install
+passes in local, `--from-archive`, and `python -O` modes. Not merged —
+the coordinator merges.
 
 **Input**: The RT3 red-team suite against this extension
 (`~/workspace/aee-redteam/rt3/FINDINGS.md`, 21 enumerated findings) and the
