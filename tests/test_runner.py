@@ -219,6 +219,13 @@ def stub_project(tmp_path: Path) -> Path:
     root = tmp_path / "project"
     root.mkdir()
     (root / "claims.json").write_text('{"claims": []}', encoding="utf-8")
+    # A conforming project has the required evaluator companion
+    # installed (Spec 005); absence tests remove this directory.
+    evaluator = root / ".specify" / "extensions" / "evaluator"
+    evaluator.mkdir(parents=True)
+    (evaluator / "extension.yml").write_text(
+        "extension:\n  id: evaluator\n", encoding="utf-8"
+    )
     return root
 
 
@@ -326,8 +333,10 @@ def test_out_of_range_engine_version_is_refused(
     # The error names both the found and the required versions.
     assert version in completed.stderr
     assert run_aee.REQUIRED_AEE_VERSION in completed.stderr
-    # The engine was never invoked for a verdict: no assessment tree.
-    assert not (stub_project / ".specify").exists()
+    # The engine was never invoked for a verdict: no AEE output tree
+    # (the fixture's .specify/extensions/evaluator is the installed
+    # companion, not something the run wrote).
+    assert not (stub_project / ".specify" / "extensions" / "aee").exists()
 
 
 @requires_posix_stub
@@ -392,16 +401,18 @@ def test_assess_success_names_only_written_files(
     for key in ("assessment", "evaluator_result", "ledger"):
         assert payload[key] is not None
         assert (stub_project / payload[key]).is_file()
-    # No evaluator extension in this project; the runner says so instead
-    # of implying the contract result came from it (RT3-04).
-    assert payload["evaluator_extension_present"] is False
+    # The stub project models an installed evaluator extension, and the
+    # runner reports the pair as present (RT3-04); without it, assess
+    # refuses instead (Spec 005, tests/test_evaluator_required.py).
+    assert payload["evaluator_extension_present"] is True
 
 
 @requires_posix_stub
 def test_assess_reports_evaluator_extension_when_present(
     tmp_path: Path, stub_project: Path
 ) -> None:
-    (stub_project / ".specify" / "extensions" / "evaluator").mkdir(parents=True)
+    # The fixture project carries the installed evaluator extension
+    # (Spec 005); the runner reports the pair as present (RT3-04).
     completed = _run_stubbed(
         stub_project, _stub_env(tmp_path), "assess", "--input", "claims.json"
     )

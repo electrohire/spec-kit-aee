@@ -2,6 +2,24 @@
 
 All notable changes follow Semantic Versioning.
 
+## 1.4.0 - 2026-10-12
+
+- Design correction (specs/005-evaluator-required): the
+  spec-kit-evaluator extension is now a **required** companion,
+  declared `required: true` in `extension.yml` and enforced by the
+  runner — `assess` refuses with exit 2, naming the missing extension
+  and how to install it, when `.specify/extensions/evaluator/` is
+  absent from the project, and writes nothing. In 1.3.0 the extension
+  was declared optional and only the contract was required, which
+  made consistency opt-in; AEE is one evaluator among many by design,
+  and its results are composed through the common evaluator so every
+  evaluator's output is handled the same way. The pair is one system.
+  `check_install.py` now also exercises the refusal end to end
+  (evaluator extension removed → `assess` exits 2 naming it), README,
+  the assess command document, and the usage docs teach the pair as
+  one system, and the evaluator install reference moves to its
+  v1.1.0 release archive.
+
 ## 1.3.0 - 2026-10-12
 
 - RT3 remediation (specs/rt3-remediation): `gaps` refuses symlinked or

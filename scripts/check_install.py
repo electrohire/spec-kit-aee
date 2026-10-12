@@ -218,6 +218,35 @@ def _run_checks(
             "Traceback" not in refused.stderr and "refused:" in refused.stderr,
             f"missing input must refuse cleanly: {refused.stderr}",
         )
+        # Spec 005 (ER-04): the evaluator extension is a required
+        # companion, enforced by the runner itself. Remove it from the
+        # installed project and the installed runner's assess must
+        # refuse — exit 2, naming the missing extension — instead of
+        # scoring without the common evaluator.
+        evaluator_dir = root / ".specify" / "extensions" / "evaluator"
+        assessments_dir = root / ".specify" / "extensions" / "aee" / "assessments"
+        before = {path.name for path in assessments_dir.glob("*.json")}
+        shutil.rmtree(evaluator_dir)
+        refused = subprocess.run(
+            [sys.executable, runner, "assess", "--input", "claims.json"],
+            cwd=root, env=env, text=True, encoding="utf-8",
+            capture_output=True, check=False,
+        )
+        check(
+            refused.returncode == 2,
+            "assess without the evaluator extension must exit 2, got "
+            f"{refused.returncode}",
+        )
+        check(
+            "spec-kit-evaluator" in refused.stderr
+            and "Traceback" not in refused.stderr,
+            "assess without the evaluator extension must refuse cleanly "
+            f"naming it: {refused.stderr}",
+        )
+        check(
+            {path.name for path in assessments_dir.glob("*.json")} == before,
+            "a refused assess must not write a new assessment",
+        )
 
 
 if __name__ == "__main__":

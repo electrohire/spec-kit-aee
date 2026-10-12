@@ -119,6 +119,13 @@ def stub_project(tmp_path: Path) -> Path:
     root = tmp_path / "project"
     root.mkdir()
     (root / "claims.json").write_text('{"claims": []}', encoding="utf-8")
+    # A conforming project has the required evaluator companion
+    # installed (Spec 005); absence tests remove this directory.
+    evaluator = root / ".specify" / "extensions" / "evaluator"
+    evaluator.mkdir(parents=True)
+    (evaluator / "extension.yml").write_text(
+        "extension:\n  id: evaluator\n", encoding="utf-8"
+    )
     return root
 
 

@@ -14,7 +14,8 @@ code can never mistake a failure for a scored outcome:
   this is a verdict, not an error.
 - ``2`` — an error, never a scored assess/challenge verdict: runner
   refusals (missing, out-of-root, or symlinked paths; invalid phase;
-  missing ``aee``; an ``aee`` version outside the required range) and
+  missing ``aee``; an ``aee`` version outside the required range;
+  ``assess`` without the required spec-kit-evaluator extension) and
   engine-reported input/usage errors. (The engine's own ``gate``
   command also uses ``2`` for a ``block`` verdict; that is the
   engine's documented gate semantics, passed through unchanged.)
@@ -57,6 +58,22 @@ At startup the runner runs ``aee --version`` and refuses (exit 2) when
 the installed engine is outside ``REQUIRED_AEE_VERSION``, naming both
 the found and required versions. The range mirrors ``extension.yml``
 (``requires.tools`` entry ``aee``); keep the two in sync.
+
+Evaluator extension (required companion, Spec 005)
+--------------------------------------------------
+AEE is one evaluator among many by design: the result ``assess``
+produces is written for the common evaluator, and composing it with
+other evaluators' results through the spec-kit-evaluator extension is
+part of the standard flow, so every evaluator's output is handled the
+same way. The pair is one system — ``extension.yml`` declares
+``spec-kit-evaluator`` required, and ``assess`` enforces it: when
+``.specify/extensions/evaluator/`` is absent from the project,
+``assess`` refuses (exit 2, naming the missing extension and the
+install command) before the engine runs or any output is written.
+Presence is still sampled before outputs are created (RT3-04) and is
+reported as ``evaluator_extension_present`` in the assess JSON. The
+other subcommands emit no Evaluator Contract results and are not
+blocked; ``gate`` works on AEE's own assessments.
 
 Extension version stamp (FR-4.2) and ledger verdict (FR-8.2)
 ------------------------------------------------------------
@@ -741,6 +758,24 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
     evaluator_extension_present = (
         root / ".specify" / "extensions" / "evaluator"
     ).is_dir()
+    if not evaluator_extension_present:
+        # Spec 005 (ER-01): the evaluator extension is a required
+        # companion, not an optional extra. Refuse here — after the
+        # presence sample, before any output path is created and
+        # before the engine runs — so a refused assess writes nothing.
+        raise ValueError(
+            "the spec-kit-evaluator extension is required for assess "
+            "but is not installed in this project "
+            "(.specify/extensions/evaluator/ not found). AEE is one "
+            "evaluator among many by design: the result assess "
+            "produces is written for the common evaluator, and "
+            "composing it with other evaluators' results through "
+            "that extension is part of the standard flow, so every "
+            "evaluator's output is handled the same way. Install the "
+            "pair together: specify extension add spec-kit-evaluator "
+            "(see the Spec Kit catalog or this extension's README), "
+            "then re-run assess."
+        )
     stamp = _unique_stamp()
     phase = _safe_segment(args.phase)
     assessment = _safe_output(
@@ -813,10 +848,11 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
         "ledger": _snapshot(ledger) if ledger else None,
     }
     # The Evaluator Contract result named below is produced by the
-    # engine itself (--evaluator-output); the separate spec-kit-evaluator
-    # extension is not invoked by this runner. The JSON reports whether
-    # it happens to be installed so consumers know compose/report are
-    # available.
+    # engine itself (--evaluator-output); composing it with other
+    # evaluators' results is the spec-kit-evaluator extension's work,
+    # whose presence the pre-flight above has already enforced. The
+    # JSON still reports evaluator_extension_present so consumers can
+    # see the pair is installed.
     try:
         completed = _run_engine(command, args.timeout)
         returncode: int | None = completed.returncode
