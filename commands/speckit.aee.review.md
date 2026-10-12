@@ -16,7 +16,7 @@ Accept `previous=<path>` and `current=<path>` (assessment JSON files, usually un
 
 ## Prerequisites
 
-1. Confirm the `aee` command is available and reports version >=1.4.0,<2. If absent, stop and recommend `python -m pip install "applied-epistemic-engineering>=1.4.0,<2"`.
+1. Confirm the `aee` command is available and reports version >=1.5.0,<2. If absent, stop and recommend `python -m pip install "applied-epistemic-engineering>=1.5.0,<2"`.
 2. Resolve both assessment paths inside the project root. Never follow symlinks or read outside the project root.
 
 ## Execution

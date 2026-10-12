@@ -28,3 +28,5 @@ python .specify/extensions/aee/scripts/python/run_aee.py gate --latest "<phase>"
 
 Exit semantics are: 0 for `pass` or `warn`, 1 for `iterate`, `clarify`, or `gather_evidence`, and 2 for `block` or malformed input. For multi-evaluator release policy, use `__SPECKIT_COMMAND_EVALUATOR_REPORT__ format=gate` on a composed result.
 
+A gate verdict is a lane-1 (machine verification) decision: it says the recorded evidence passed the recorded checks. It does not say any human has explained, accepted, or digested the claims — read the assessment's lane-2 state (`lanes.lane_2`) and its `not_understood` entries alongside the gate result before treating gated work as settled. A gated assessment that lacks a `not_understood` statement is itself incomplete and the gate refuses it (exit 2).
+

@@ -139,7 +139,7 @@ from pathlib import Path
 
 args = sys.argv[1:]
 if args == ["--version"]:
-    print(os.environ.get("AEE_STUB_VERSION_TEXT", "aee 1.4.0"))
+    print(os.environ.get("AEE_STUB_VERSION_TEXT", "aee 1.5.0"))
     sys.exit(0)
 behavior = os.environ.get("AEE_STUB_BEHAVIOR", "ok")
 command = args[0] if args else ""
@@ -183,7 +183,7 @@ sys.exit(0)
 '''
 
 
-def _stub_env(tmp_path: Path, version: str = "1.4.0", behavior: str = "ok") -> dict:
+def _stub_env(tmp_path: Path, version: str = "1.5.0", behavior: str = "ok") -> dict:
     bin_dir = tmp_path / "stub-bin"
     bin_dir.mkdir(exist_ok=True)
     stub = bin_dir / "aee"
@@ -351,7 +351,7 @@ def test_parse_aee_version(text: str, expected: tuple[int, int, int] | None) -> 
 
 @pytest.mark.parametrize(
     ("version", "ok"),
-    [((1, 4, 0), True), ((1, 9, 9), True), ((1, 0, 2), False), ((2, 0, 0), False)],
+    [((1, 5, 0), True), ((1, 9, 9), True), ((1, 4, 0), False), ((1, 0, 2), False), ((2, 0, 0), False)]  # floor moved to the realigned engine (Spec 004 P5-E1): 1.4.0 is now refused,
 )
 def test_aee_version_range(version: tuple[int, int, int], ok: bool) -> None:
     assert run_aee._aee_version_satisfies(version) is ok

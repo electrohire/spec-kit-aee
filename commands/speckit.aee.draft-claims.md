@@ -16,7 +16,7 @@ Accept `spec=<path>` (a spec markdown file, or a feature directory containing `s
 
 ## Prerequisites
 
-1. Confirm the `aee` command is available and reports version >=1.4.0,<2. The runner enforces this itself at startup: it runs `aee --version` and refuses with exit 2, naming the found and required versions.
+1. Confirm the `aee` command is available and reports version >=1.5.0,<2. The runner enforces this itself at startup: it runs `aee --version` and refuses with exit 2, naming the found and required versions.
 2. Drafting uses the engine's Python helper `aee.extract.draft_claims_from_spec` (the engine CLI has no drafting subcommand), so the engine package must be importable by the Python that runs the adapter, and it must be a build that provides the helper (engine builds after 1.4.0). An engine without the helper makes the runner refuse cleanly with exit 2 — it never falls back to inventing claims itself.
 3. Resolve the project root and the spec artifact. Never follow symlinks or read outside the project root.
 
