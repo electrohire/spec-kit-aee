@@ -31,7 +31,8 @@ def test_manifest_uses_supported_dependency_metadata() -> None:
         "ollama",
         "spec-kit-evaluator",
     }
-    assert "1.4.0" in SpecifierSet(tools["aee"]["version"])
+    assert "1.5.0" in SpecifierSet(tools["aee"]["version"])
+    assert "1.4.0" not in SpecifierSet(tools["aee"]["version"])  # Spec 004 P5-E1 floor
     assert "1.0.2" not in SpecifierSet(tools["aee"]["version"])
     for group in ("commands", "templates", "scripts", "config"):
         for item in manifest.data["provides"][group]:
@@ -137,7 +138,7 @@ def test_policy_assessment_carries_verdicts(project: Path) -> None:
     assessment = json.loads((project / paths["assessment"]).read_text())
     assert assessment["verdicts"], "policy assessment must carry verdicts"
     for verdict in assessment["verdicts"].values():
-        assert verdict["verdict"] in {"accept", "challenge", "abstain"}
+        assert verdict["verdict"] in {"accept", "challenge", "abstain", "unjudged"}  # Spec 004 R1.4: stage-created claims are unjudged
     plain = run(project, "assess", "--input", "claims.json",
                 "--phase", "after_specify", "--no-ledger")
     plain_assessment = json.loads(

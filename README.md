@@ -32,11 +32,11 @@ commands belong in your coding agent's chat, not in PowerShell or Bash.
 | --- | --- | --- |
 | Spec Kit | `specify-cli>=1.0.0` | [github/spec-kit](https://github.com/github/spec-kit): project and command installation |
 | Python | `python>=3.11` | Runs the adapter and engine |
-| AEE engine | `applied-epistemic-engineering>=1.4.0,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps |
+| AEE engine | `applied-epistemic-engineering>=1.5.0,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps |
 | Evaluator Contract (optional) | extension ID `evaluator`, version `>=1.0.0,<2` | [electrohire/spec-kit-evaluator](https://github.com/electrohire/spec-kit-evaluator): composition, reporting, and routing over the engine-produced result; not invoked by the runner |
 | This adapter | extension ID `aee` | [electrohire/spec-kit-aee](https://github.com/electrohire/spec-kit-aee): ten agent commands and optional lifecycle hooks |
 
-The engine needs 1.4.0 for the policy-gate, reliability, and review CLI surface (1.0.2 introduced the `gaps` command), and the runner enforces that floor itself: at startup it checks `aee --version` against `>=1.4.0,<2` and refuses with exit 2 — naming the found and required versions — rather than scoring with an out-of-range engine. The Evaluator Contract result is produced by the engine itself; the Evaluator extension is **not** a runtime dependency of this adapter (the runner never invokes it) and is only needed for its own compose/report/route commands. It is a Spec Kit extension, **not** a PyPI package or shell executable. Spec Kit's
+The engine needs 1.4.0 for the policy-gate, reliability, and review CLI surface (1.0.2 introduced the `gaps` command), and the runner enforces that floor itself: at startup it checks `aee --version` against `>=1.5.0,<2` and refuses with exit 2 — naming the found and required versions — rather than scoring with an out-of-range engine. The Evaluator Contract result is produced by the engine itself; the Evaluator extension is **not** a runtime dependency of this adapter (the runner never invokes it) and is only needed for its own compose/report/route commands. It is a Spec Kit extension, **not** a PyPI package or shell executable. Spec Kit's
 `requires.tools` metadata documents dependencies; it does not install them or
 verify their versions. Install the engine explicitly before this adapter, and the evaluator extension only if you want composition/reporting.
 
@@ -56,11 +56,11 @@ activation, use `.\.venv\Scripts\python.exe` for pip and put
 when launching your coding agent so it can find both `python` and `aee`.
 
 ```bash
-python -m pip install "applied-epistemic-engineering>=1.4.0,<2"
+python -m pip install "applied-epistemic-engineering>=1.5.0,<2"
 aee --version
 # Optional, only for compose/report/route over the result:
 specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.0.0.zip
-specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.2.0.zip
+specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.3.0.zip
 specify extension list
 ```
 
@@ -116,7 +116,7 @@ The adapter (`run_aee.py`) uses one code for every error so an exit code alone n
 | --- | --- |
 | 0 | Engine outcome `pass`/`warn`, or a successful non-scored operation |
 | 1 | Engine scored outcome `iterate`, `clarify`, or `gather_evidence` — a verdict, not an error |
-| 2 | An error: runner refusals (missing/out-of-root/symlinked paths, invalid phase, missing `aee`, or an `aee` version outside `>=1.4.0,<2`) and engine-reported input/usage errors. (`gate` also returns 2 for an engine `block` verdict.) |
+| 2 | An error: runner refusals (missing/out-of-root/symlinked paths, invalid phase, missing `aee`, or an `aee` version outside `>=1.5.0,<2`) and engine-reported input/usage errors. (`gate` also returns 2 for an engine `block` verdict.) |
 
 Runner refusals print `refused: ...` to stderr and never a traceback. JSON summaries always carry `aee_exit_code` and `ok`, and name an output path only when that file was actually written during the run (otherwise the field is `null`).
 

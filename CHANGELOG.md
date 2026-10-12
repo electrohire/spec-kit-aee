@@ -2,7 +2,7 @@
 
 All notable changes follow Semantic Versioning.
 
-## Unreleased
+## 1.3.0 - 2026-10-12
 
 - RT3 remediation (specs/rt3-remediation): `gaps` refuses symlinked or
   out-of-root evidence in a runner-side pre-flight instead of letting it
@@ -24,6 +24,24 @@ All notable changes follow Semantic Versioning.
   checks are explicit (survive `python -O`) with an optional
   `--from-archive` mode (RT3-16); the config template header states
   that no script loads it (RT3-19).
+- Spec 004 P5 vocabulary alignment (specs/004-vocabulary-alignment):
+  the engine floor moves to the realigned engine
+  (`applied-epistemic-engineering>=1.5.0,<2` — methodology 2.0, Spec
+  004 stage vocabulary) in the runner, `extension.yml`, and README,
+  and the runner's startup enforcement refuses older engines by name;
+  the `assess` JSON gains a `verdict_display` block copied from the
+  stamped assessment (outcome, methodology version, stage-capped
+  `reported_statuses`, `stage_caps`, the lane pair, `not_understood`),
+  so the extension displays exactly what the bare CLI reports on the
+  same bundle; the runner drives the engine's recorded `--lenient`
+  compatibility mode for assess/challenge/graph when the installed
+  engine advertises it, so pre-realignment bundles (no `stage`
+  field) load with the default on the record instead of being
+  refused; the assess/gate command documents teach the realigned
+  vocabulary (stages, exposition, headline decomposition roles,
+  reported-not-declared statuses, lane-paired reporting,
+  `not_understood` with every verdict, unjudged distinct from
+  abstained).
 
 ## 1.2.0 - 2026-10-06
 

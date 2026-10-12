@@ -115,7 +115,7 @@ Assessment/gate exit codes:
 | 1 | `iterate`, `clarify`, or `gather_evidence`; recovery is needed |
 | 2 | `block` (gate), or an error — never a scored assess/challenge verdict |
 
-Errors include runner refusals (missing, out-of-root, or symlinked paths; an invalid phase; a missing `aee`; or an installed `aee` version outside the required `>=1.4.0,<2`, which the runner checks itself at startup and reports by name) and engine-reported input/usage errors. Runner refusals print `refused: ...` to stderr and never a Python traceback. Do not interpret every nonzero process code as a scored
+Errors include runner refusals (missing, out-of-root, or symlinked paths; an invalid phase; a missing `aee`; or an installed `aee` version outside the required `>=1.5.0,<2`, which the runner checks itself at startup and reports by name) and engine-reported input/usage errors. Runner refusals print `refused: ...` to stderr and never a Python traceback. Do not interpret every nonzero process code as a scored
 assessment outcome. Do not globally suppress failures in CI to accommodate an
 expected recovery outcome: assert the expected outcome and inspect the artifacts.
 

@@ -3,7 +3,7 @@ schema_version: '1.0'
 extension:
   id: aee
   name: Applied Epistemic Engineering
-  version: 1.2.0
+  version: 1.3.0
   description: Challenge claims, trace evidence, propagate uncertainty, and route epistemic failures across phases
   category: process
   effect: read-write
@@ -20,10 +20,14 @@ requires:
       version: '>=3.11'
     # CLI supplied by https://github.com/electrohire/applied-epistemic-engineering
     # 1.0.2 introduced the gaps command; 1.4.0 introduced the policy
-    # gates, reliability blending, and review subcommand used here.
+    # gates, reliability blending, and review subcommand; 1.5.0 is
+    # the realigned engine (Spec 004 vocabulary: lifecycle
+    # stages, stage-capped reported statuses, lane-paired outcomes,
+    # not_understood, methodology 2.0) - the floor moves to it so
+    # pre-realignment engines are refused cleanly.
     - name: aee
       required: true
-      version: '>=1.4.0,<2'
+      version: '>=1.5.0,<2'
     # Spec Kit extension, not a shell executable. OPTIONAL for this
     # adapter: the runner never invokes spec-kit-evaluator code — the
     # Evaluator Contract result is produced by the AEE engine itself

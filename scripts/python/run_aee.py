@@ -117,8 +117,8 @@ from pathlib import Path
 DEFAULT_TIMEOUT_SECONDS = 600.0
 
 # Mirrors extension.yml requires.tools[aee]. Keep in sync.
-REQUIRED_AEE_VERSION = ">=1.4.0,<2"
-_AEE_VERSION_MIN = (1, 4, 0)
+REQUIRED_AEE_VERSION = ">=1.5.0,<2"
+_AEE_VERSION_MIN = (1, 5, 0)
 _AEE_VERSION_MAX = (2, 0, 0)  # exclusive
 _VERSION_PATTERN = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 
@@ -514,6 +514,39 @@ def _assess_supports_no_ledger(executable: str, timeout: float = 30.0) -> bool:
     return _NO_LEDGER_SUPPORT[executable]
 
 
+_LENIENT_SUPPORT: dict[tuple[str, str], bool] = {}
+
+
+def _supports_lenient(executable: str, subcommand: str, timeout: float = 30.0) -> bool:
+    """True when `aee <subcommand> --help` advertises --lenient.
+
+    The runner drives the engine's recorded compatibility mode
+    (Spec 002 FR-1.3) for project claim bundles: bundles written
+    before the Spec 004 stage vocabulary lack the `stage` field,
+    and strict loading refuses them outright. Lenient loading
+    defaults the stage to `created` ON THE RECORD (the assessment
+    metadata carries `loading_mode` and `stage_defaults`), so the
+    transition stays honest instead of becoming a hard refusal of
+    every pre-realignment project. Capability-probed per
+    subcommand, like --no-ledger: engines without the flag (the
+    released 1.4.0 `challenge` has none) are invoked without it.
+    """
+    key = (executable, subcommand)
+    if key not in _LENIENT_SUPPORT:
+        try:
+            completed = subprocess.run(
+                [executable, subcommand, "--help"],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+            _LENIENT_SUPPORT[key] = "--lenient" in completed.stdout
+        except (OSError, subprocess.SubprocessError):
+            _LENIENT_SUPPORT[key] = False
+    return _LENIENT_SUPPORT[key]
+
+
 def _snapshot(path: Path) -> tuple[int, int] | None:
     """(size, mtime_ns) for an existing file, else None."""
     try:
@@ -736,6 +769,8 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
         "--actor",
         args.actor,
     ]
+    if _supports_lenient(executable, "assess", timeout=min(30.0, args.timeout)):
+        command.append("--lenient")
     if args.policy:
         command.extend([
             "--policy",
@@ -799,15 +834,18 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
     extension_version: str | None = None
     ledger_verification: dict | None = None
     latest_rel: str | None = None
+    verdict_display: dict | None = None
     if assessment_rel is not None:
         extension_version, ledger_verification = _stamp_and_ledger(
             assessment, ledger, args.actor, ledger_class
         )
         latest_rel = _write_latest_pointer(root, phase, assessment_rel)
+        verdict_display = _verdict_display(assessment)
     print(
         json.dumps(
             {
                 "assessment": assessment_rel,
+                "verdict_display": verdict_display,
                 "evaluator_result": (
                     None
                     if timed_out
@@ -830,6 +868,38 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
         )
     )
     return 2 if timed_out else returncode
+
+
+def _verdict_display(assessment_path: Path) -> dict | None:
+    """The realigned verdict display (Spec 004 P5-E2): the stamped
+    assessment's own verdict vocabulary, copied for the runner's
+    JSON so a consumer of the runner sees exactly what the bare CLI
+    reports on the same bundle - the stage-capped
+    `reported_statuses`, the `stage_caps` records, the lane pair
+    (lane 1 machine verification, lane 2 human acceptance), and the
+    `not_understood` residual-unknowns statement that must render
+    with every verdict (R5.3/R6.3). The runner computes nothing
+    here: every value is the engine's. A record lacking the fields
+    (pre-realignment) yields None, never fabricated values.
+    """
+    try:
+        value = json.loads(assessment_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(value, dict) or "reported_statuses" not in value:
+        return None
+    lanes = value.get("lanes") if isinstance(value.get("lanes"), dict) else {}
+    return {
+        "outcome": value.get("outcome"),
+        "methodology_version": value.get("methodology_version"),
+        "reported_statuses": value.get("reported_statuses"),
+        "stage_caps": value.get("stage_caps"),
+        "lanes": {
+            "lane_1": lanes.get("lane_1"),
+            "lane_2": lanes.get("lane_2"),
+        },
+        "not_understood": value.get("not_understood"),
+    }
 
 
 def _write_latest_pointer(root: Path, phase: str, assessment_rel: str) -> str:
@@ -881,6 +951,8 @@ def _challenge(executable: str, root: Path, args: argparse.Namespace) -> int:
         "--actor",
         args.actor,
     ]
+    if _supports_lenient(executable, "challenge", timeout=min(30.0, args.timeout)):
+        command.append("--lenient")
     before = _snapshot(output)
     try:
         completed = _run_engine(command, args.timeout)
@@ -913,9 +985,12 @@ def _graph(executable: str, root: Path, args: argparse.Namespace) -> int:
         root, Path(f".specify/extensions/aee/graphs/aee-claims-{stamp}.mmd")
     )
     before = _snapshot(output)
+    graph_command = [executable, "graph", "--input", str(source), "--output", str(output)]
+    if _supports_lenient(executable, "graph", timeout=min(30.0, args.timeout)):
+        graph_command.append("--lenient")
     try:
         completed = _run_engine(
-            [executable, "graph", "--input", str(source), "--output", str(output)],
+            graph_command,
             args.timeout,
         )
         returncode: int | None = completed.returncode
