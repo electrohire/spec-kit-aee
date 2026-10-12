@@ -34,7 +34,7 @@ commands belong in your coding agent's chat, not in PowerShell or Bash.
 | Python | `python>=3.11` | Runs the adapter and engine |
 | AEE engine | `applied-epistemic-engineering>=1.4.0,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps |
 | Evaluator Contract (optional) | extension ID `evaluator`, version `>=1.0.0,<2` | [electrohire/spec-kit-evaluator](https://github.com/electrohire/spec-kit-evaluator): composition, reporting, and routing over the engine-produced result; not invoked by the runner |
-| This adapter | extension ID `aee` | [electrohire/spec-kit-aee](https://github.com/electrohire/spec-kit-aee): eight agent commands and optional lifecycle hooks |
+| This adapter | extension ID `aee` | [electrohire/spec-kit-aee](https://github.com/electrohire/spec-kit-aee): ten agent commands and optional lifecycle hooks |
 
 The engine needs 1.4.0 for the policy-gate, reliability, and review CLI surface (1.0.2 introduced the `gaps` command), and the runner enforces that floor itself: at startup it checks `aee --version` against `>=1.4.0,<2` and refuses with exit 2 — naming the found and required versions — rather than scoring with an out-of-range engine. The Evaluator Contract result is produced by the engine itself; the Evaluator extension is **not** a runtime dependency of this adapter (the runner never invokes it) and is only needed for its own compose/report/route commands. It is a Spec Kit extension, **not** a PyPI package or shell executable. Spec Kit's
 `requires.tools` metadata documents dependencies; it does not install them or
@@ -77,7 +77,7 @@ make no model API calls. Your chosen coding agent has its own inference setup.
 
 ## First run and configuration
 
-The [step-by-step walkthrough](docs/usage.md) covers all eight commands, expected
+The [step-by-step walkthrough](docs/usage.md) covers all ten commands, expected
 exit codes, output files, gap evidence format, and recovery. Start with the
 unsupported-claim template; replace its example requirement with your own and add
 real evidence only after inspecting it. The published v1.0.1 template ships with
@@ -120,15 +120,19 @@ The adapter (`run_aee.py`) uses one code for every error so an exit code alone n
 
 Runner refusals print `refused: ...` to stderr and never a traceback. JSON summaries always carry `aee_exit_code` and `ok`, and name an output path only when that file was actually written during the run (otherwise the field is `null`).
 
+Assessments produced through the runner carry `metadata.extension_version` (the engine stamps `metadata.engine_version` itself; bare-CLI assessments omit the extension key). The runner stamps before it ledgers — through the engine's own `aee.ledger` — so the ledger's SHA-256 covers the stamped file, and the assess summary reports the post-append chain verification as `ledger_verification` (`null` with `--no-ledger`, never a fabricated verdict). Drafting (`draft-claims`) requires the engine package importable by the runner's Python and an engine build providing `aee.extract.draft_claims_from_spec` (engine builds after 1.4.0); the assess stamp/ledger step likewise uses the importable `aee.ledger`, and refuses cleanly when the package is not importable.
+
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
+| `speckit.aee.draft-claims` | Draft atomic claims from a spec's requirements for human ratification (born `draft`, never upgraded by the tool) |
 | `speckit.aee.assess` | Run the complete deterministic AEE pipeline |
 | `speckit.aee.challenge` | Focus on breakpoints and recovery work |
 | `speckit.aee.trace` | Render dependencies and review provenance |
 | `speckit.aee.verify` | Verify ledger integrity |
 | `speckit.aee.gate` | Return CI-friendly exit status from an assessment |
+| `speckit.aee.review` | Diff two assessments into a materiality-filtered review queue |
 | `speckit.aee.gaps` | Generate or update the gap register from a verification matrix and test evidence |
 | `speckit.aee.route-evidence` | Route oversized logs and sources into raw evidence slices for AEE gates |
 | `speckit.aee.report-savings` | Report measured RTK and Headroom token savings, never estimated |

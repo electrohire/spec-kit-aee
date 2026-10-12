@@ -15,14 +15,48 @@ first smoke check.
 python .specify/extensions/aee/scripts/python/run_aee.py assess --input claims.json --phase after_specify
 ```
 
-The printed JSON lists `assessment`, `evaluator_result`, `ledger`, and
-`aee_exit_code`. Open both result files and inspect their `outcome`, findings, and
+The printed JSON lists `assessment`, `evaluator_result`, `ledger`,
+`aee_exit_code`, and — after a ledgered assess — `ledger_verification`, the
+runner's own post-append verification of the ledger chain (`valid`, `entries`,
+`head_hash`, `errors`; see "Verify the ledger" below). The assessment's
+`metadata` carries `engine_version` (stamped by the engine) and
+`extension_version` (stamped by the runner before ledgering, so the ledger's
+SHA-256 covers the stamped file). Open both result files and inspect their `outcome`, findings, and
 recovery actions. AEE scores the evidence you supply; it does not independently
 verify the content of every evidence reference. Do not invent an observed result
 to make an assessment pass. Keep source artifacts unchanged during assessment.
 
 Agent equivalent: `/speckit.aee.assess artifact=claims.json phase=after_specify`.
 Use your installed agent's rendered command spelling if it uses a different separator.
+
+## Draft claims from a spec
+
+Hand-writing a claims bundle is the slow way in. Draft them from the spec's
+own requirements instead:
+
+```bash
+python .specify/extensions/aee/scripts/python/run_aee.py draft-claims --spec specs/001-search/spec.md
+```
+
+`--spec` also accepts the feature directory (its `spec.md` is used). The
+bundle lands as `aee-claims.json` beside the spec unless `--output <path>`
+says otherwise. Every drafted claim is born `status: draft` with a single
+`asserted`/`model` evidence item — the requirement text itself, as modelled
+by the engine's drafting helper — and a proposed falsification test. A
+requirement with nothing testable to anchor a falsifier to gets an explicit
+`TODO` falsifier, and strict loading (`aee validate`, any strict assess)
+rejects the bundle until a human replaces every TODO with a real test.
+Where one requirement's text explicitly references another, the draft
+carries a `depends_on` proposal; the runner's JSON summary lists them under
+`depends_on_proposals` with the source references they came from.
+
+Nothing in this flow ratifies a claim: no path in the runner or the command
+sets a draft above `draft` or upgrades its evidence. Ratification is your
+recorded edit to the bundle — completing falsifiers, confirming or removing
+`depends_on` proposals, and changing statuses by hand. Drafting is
+deterministic, makes no model calls, and requires an engine build whose
+`aee.extract` provides the drafting helper (builds after 1.4.0); an older
+engine makes the runner refuse with exit 2 rather than improvise claims.
 
 ## Challenge, repair, and reassess
 
@@ -56,6 +90,14 @@ Replace the angle-bracket placeholder with the actual rich assessment path.
 Verify reports chain validity, entry count, head hash, and errors. A valid chain
 establishes continuity of retained records, not truth, identity, trusted time, or
 completeness before the first record.
+
+The assess run already performs this verification itself: the documented loop
+is assess → verify-ledger, and the assess JSON summary's `ledger_verification`
+field is the verdict from immediately after the append (FR-8.2). The standalone
+`verify` above stays useful for re-checking the chain at any later time. With
+`assess --no-ledger`, `ledger_verification` is `null` — no verdict is reported
+for a ledgering that did not happen. The assessment JSON is a working copy; the
+ledger entry recording its SHA-256 is the record of what was assessed.
 
 Assessment/gate exit codes:
 

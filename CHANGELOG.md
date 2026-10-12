@@ -4,6 +4,17 @@ All notable changes follow Semantic Versioning.
 
 ## 1.2.0 - Unreleased
 
+- Spec 002 Phase 4 (extension parts): new `speckit.aee.draft-claims` command
+  (ten commands total) and runner `draft-claims` subcommand over the engine's
+  `aee.extract` drafting helper — drafts are born `draft` with
+  `asserted`/`model` evidence, TODO falsifiers pass through untouched for
+  strict loading to reject, and `depends_on` proposals from explicit spec
+  cross-references are surfaced in the summary; no tool path ratifies or
+  upgrades a draft. The runner now stamps `metadata.extension_version` into
+  assessments before ledgering (through the engine's own `aee.ledger`, so
+  the ledger SHA-256 covers the stamped file) and reports the post-append
+  chain verification as `ledger_verification` in the assess summary
+  (`null` under `--no-ledger`).
 - Wire the engine's epistemic-ledger ports into the assess flow: the runner's
   `assess` gains `--policy` (per-claim ACCEPT / CHALLENGE / ABSTAIN verdicts,
   with `--min-independent-sources` / `--contested-threshold` overrides) and
