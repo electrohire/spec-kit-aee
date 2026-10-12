@@ -24,7 +24,7 @@ All notable changes follow Semantic Versioning.
   checks are explicit (survive `python -O`) with an optional
   `--from-archive` mode (RT3-16); the config template header states
   that no script loads it (RT3-19).
-- Spec 004 P5 vocabulary alignment (specs/004-tao-vocabulary-alignment):
+- Spec 004 P5 vocabulary alignment (specs/004-vocabulary-alignment):
   the engine floor moves to the realigned engine
   (`applied-epistemic-engineering>=1.5.0,<2` — methodology 2.0, Spec
   004 stage vocabulary) in the runner, `extension.yml`, and README,

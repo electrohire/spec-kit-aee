@@ -21,7 +21,7 @@ requires:
     # CLI supplied by https://github.com/electrohire/applied-epistemic-engineering
     # 1.0.2 introduced the gaps command; 1.4.0 introduced the policy
     # gates, reliability blending, and review subcommand; 1.5.0 is
-    # the realigned engine (Spec 004 Tao vocabulary: lifecycle
+    # the realigned engine (Spec 004 vocabulary: lifecycle
     # stages, stage-capped reported statuses, lane-paired outcomes,
     # not_understood, methodology 2.0) - the floor moves to it so
     # pre-realignment engines are refused cleanly.

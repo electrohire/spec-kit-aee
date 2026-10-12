@@ -249,7 +249,7 @@
       "conflicts_with": [],
       "evidence": [
         {
-          "ref": "specs/004-tao-vocabulary-alignment/spec.md",
+          "ref": "specs/004-vocabulary-alignment/spec.md",
           "kind": "asserted",
           "direction": "supports",
           "source_quality": "primary",

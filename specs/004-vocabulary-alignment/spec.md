@@ -1,4 +1,4 @@
-# Feature Specification: Tao Vocabulary Alignment (Spec 004 P5, extension half)
+# Feature Specification: Vocabulary Alignment (Spec 004 P5, extension half)
 
 **Feature Branch**: `impl/004-p5-vocabulary-alignment`
 
@@ -20,8 +20,8 @@ engine repo's own P5 branch (`impl/004-p5-evaluator-contract`):
 `--lenient` parity for `challenge` and `graph`, and the engine
 version identity 1.5.0 that this floor names.
 
-**Input**: Spec 004 (Tao realignment) Phase P5 in the engine repo
-(`specs/004-tao-realignment/plan.md`): "the commands' verdict
+**Input**: Spec 004 (framework realignment) Phase P5 in the engine repo
+(`specs/004-framework-realignment/plan.md`): "the commands' verdict
 language updated to the realigned vocabulary — stage-capped
 statuses, lane-paired outcomes, `not_understood` rendered with
 every verdict (R5.3, R6.3) — under that repo's own spec/claims
