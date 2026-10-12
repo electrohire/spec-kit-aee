@@ -40,7 +40,7 @@ _STUB_AEE_EXE = """\
 import sys
 
 if sys.argv[1:] == ["--version"]:
-    print("aee 1.4.0")
+    print("aee 1.5.0")
     sys.exit(0)
 sys.exit(0)
 """
@@ -119,7 +119,7 @@ def _stub_env(tmp_path: Path) -> dict:
     exe.chmod(exe.stat().st_mode | stat.S_IEXEC)
     package = tmp_path / "stub-pkg" / "aee"
     package.mkdir(parents=True, exist_ok=True)
-    (package / "__init__.py").write_text('__version__ = "1.4.0"\n', encoding="utf-8")
+    (package / "__init__.py").write_text('__version__ = "1.5.0"\n', encoding="utf-8")
     (package / "extract.py").write_text(_STUB_EXTRACT, encoding="utf-8")
     env = dict(os.environ)
     env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
@@ -341,7 +341,7 @@ def test_live_assess_stamps_and_verifies_with_new_engine(
     assert completed.returncode in (0, 1), completed.stderr
     payload = json.loads(completed.stdout)
     assessment = json.loads((live_project / payload["assessment"]).read_text())
-    assert assessment["metadata"]["engine_version"] == "1.4.0"
+    assert assessment["metadata"]["engine_version"] == "1.5.0"  # the realigned engine (Spec 004 P5-E1)
     assert assessment["metadata"]["extension_version"] == "1.2.0"
     assert assessment["metadata"]["ledger"]["mode"] == "custom"
     verdict = payload["ledger_verification"]
