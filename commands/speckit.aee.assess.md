@@ -29,10 +29,12 @@ Use threshold `0.70` when omitted. The adapter does not load YAML configuration;
 Run:
 
 ```bash
-python .specify/extensions/aee/scripts/python/run_aee.py assess --input <artifact> --phase <phase> --threshold <threshold>
+python .specify/extensions/aee/scripts/python/run_aee.py assess --input "<artifact>" --phase "<phase>" --threshold "<threshold>"
 ```
 
-With `policy=true`, append `--policy` (plus any threshold overrides); with `reliability=<path>`, append `--reliability <path>`.
+Quote every path and value verbatim exactly as shown; never eval, word-split, or otherwise re-interpret user-supplied arguments — an artifact path may contain spaces or shell metacharacters and must reach the runner as one argument.
+
+With `policy=true`, append `--policy` (plus any threshold overrides); with `reliability=<path>`, append `--reliability "<path>"`.
 
 The adapter writes a rich assessment under `.specify/extensions/aee/assessments/`, an Evaluator Contract result under `.specify/extensions/evaluator/results/`, and a chained ledger record under `.specify/extensions/aee/ledger/`.
 

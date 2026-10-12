@@ -25,10 +25,10 @@ Accept `spec=<path>` (a spec markdown file, or a feature directory containing `s
 Run:
 
 ```bash
-python .specify/extensions/aee/scripts/python/run_aee.py draft-claims --spec <spec.md-or-feature-dir>
+python .specify/extensions/aee/scripts/python/run_aee.py draft-claims --spec "<spec.md-or-feature-dir>"
 ```
 
-With an explicit destination, append `--output <path>`.
+With an explicit destination, append `--output "<path>"`.
 
 The runner prints a JSON summary naming the bundle actually written, the claim count, how many drafts still carry a TODO falsifier, and the `depends_on` proposals (below). The drafting is deterministic and makes no model calls.
 

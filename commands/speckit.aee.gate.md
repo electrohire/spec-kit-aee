@@ -15,8 +15,16 @@ $ARGUMENTS
 Resolve `assessment=<path>` inside `.specify/extensions/aee/assessments/` unless an explicit in-project path is supplied. Refuse symlinks and run:
 
 ```bash
-python .specify/extensions/aee/scripts/python/run_aee.py gate --input <assessment>
+python .specify/extensions/aee/scripts/python/run_aee.py gate --input "<assessment>"
 ```
+
+To gate the most recent assessment for a lifecycle phase instead of naming a file, use the pointer that `assess` maintains:
+
+```bash
+python .specify/extensions/aee/scripts/python/run_aee.py gate --latest "<phase>"
+```
+
+`--latest` refuses (exit 2) when no assessment has been recorded for the phase, and prints the resolved assessment's age to stderr — check it before trusting the verdict, because it gates whatever the pointer names, however old. `--input` and `--latest` are mutually exclusive.
 
 Exit semantics are: 0 for `pass` or `warn`, 1 for `iterate`, `clarify`, or `gather_evidence`, and 2 for `block` or malformed input. For multi-evaluator release policy, use `__SPECKIT_COMMAND_EVALUATOR_REPORT__ format=gate` on a composed result.
 

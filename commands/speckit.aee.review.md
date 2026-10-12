@@ -24,7 +24,7 @@ Accept `previous=<path>` and `current=<path>` (assessment JSON files, usually un
 Run:
 
 ```bash
-python .specify/extensions/aee/scripts/python/run_aee.py review --previous <path> --current <path>
+python .specify/extensions/aee/scripts/python/run_aee.py review --previous "<path>" --current "<path>"
 ```
 
 The runner prints the review queue as JSON. Report the moved claims (largest first, with before/after scores and bands), any verdict changes, and added/removed claims. An empty queue is a real result: it means nothing moved materially between the two assessments — say so rather than re-reviewing everything.

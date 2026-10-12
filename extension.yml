@@ -104,6 +104,9 @@ provides:
       runtimes:
         - python
 
+# Hooks bind no arguments; the artifact and phase each hook expects
+# (including the after_verify matrix/evidence defaults and its stop
+# condition) are specified in docs/usage.md, "Hook expectations".
 hooks:
   after_specify:
     command: speckit.aee.assess
