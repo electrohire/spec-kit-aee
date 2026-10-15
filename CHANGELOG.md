@@ -2,6 +2,21 @@
 
 All notable changes follow Semantic Versioning.
 
+## 1.5.1 - 2026-10-15
+
+Documentation only; the runner and its dependency pins are unchanged.
+
+- Fix: the `speckit.aee.draft-claims` command document still told the agent
+  to confirm `aee` was available and importable before running. An agent
+  following it would stop before the runner could install the engine itself
+  (the same issue 1.5.0 fixed for assess, gaps, and review). It now matches
+  those documents.
+- `docs/usage.md` no longer asks for an "engine environment" to be active;
+  `docs/dependency-audit.md` records that AEE installs its own dependencies
+  and the current CI coverage.
+- README states the supported platforms (Linux, macOS, Windows; Python
+  3.11-3.13).
+
 ## 1.5.0 - 2026-10-15
 
 - Self-provisioned dependencies: `specify extension add aee` is now

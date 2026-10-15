@@ -1,8 +1,9 @@
 # First assessment, recovery, and verification
 
-Complete the README installation first. All shell commands here run from your
-initialized project root with the engine environment active. No paid inference is
-needed for these deterministic adapter operations.
+Complete the README installation first (`specify extension add aee`; the runner
+installs the engine and the Evaluator extension itself on first use). All shell
+commands here run from your initialized project root. No paid inference is needed
+for these deterministic adapter operations.
 
 ## Start with an unsupported claim
 
