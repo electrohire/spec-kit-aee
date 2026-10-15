@@ -2,6 +2,12 @@
 
 All notable changes follow Semantic Versioning.
 
+## Unreleased
+
+- `check_install.py` prints the engine and jsonschema versions the runner
+  provisioned and the Evaluator version it installed, so acceptance logs
+  record the resolved dependency versions (test harness only).
+
 ## 1.5.1 - 2026-10-15
 
 Documentation only; the runner and its dependency pins are unchanged.

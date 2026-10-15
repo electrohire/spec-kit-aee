@@ -303,6 +303,9 @@ def _run_checks(
                 probe.returncode == 0,
                 f"the runner must provision its runtime: {probe.stderr}",
             )
+            engine_version, jsonschema_version = probe.stdout.split()
+            print(f"provisioned runtime: applied-epistemic-engineering "
+                  f"{engine_version}, jsonschema {jsonschema_version}")
         # Without --evaluator-dir the runner installed its required
         # companion itself during this first assess.
         listed = command(specify, "extension", "list", "--json")
@@ -324,6 +327,8 @@ def _run_checks(
                 and installed["evaluator"]["version"] == pinned.group(1),
                 f"the runner must install its pinned evaluator version: {listed}",
             )
+            print(f"evaluator installed by the runner: "
+                  f"{installed['evaluator']['version']}")
         check(
             (root / paths["assessment"]).is_file(),
             f"assess named a missing assessment file: {paths}",
