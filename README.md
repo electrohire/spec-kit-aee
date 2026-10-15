@@ -32,39 +32,42 @@ commands belong in your coding agent's chat, not in PowerShell or Bash.
 | --- | --- | --- |
 | Spec Kit | `specify-cli>=1.0.0` | [github/spec-kit](https://github.com/github/spec-kit): project and command installation |
 | Python | `python>=3.11` | Runs the adapter and engine |
-| AEE engine | `applied-epistemic-engineering>=1.5.0,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps |
-| Evaluator extension (required companion) | extension ID `evaluator`, version `>=1.0.0,<2` | [electrohire/spec-kit-evaluator](https://github.com/electrohire/spec-kit-evaluator): the common evaluator this adapter's results are composed through — composition, reporting, and routing over the engine-produced result; `assess` refuses without it |
+| AEE engine | `applied-epistemic-engineering>=1.5.0,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps; installed automatically by the runner when missing |
+| Evaluator extension (required companion) | extension ID `evaluator`, version `>=1.0.0,<2` | [electrohire/spec-kit-evaluator](https://github.com/electrohire/spec-kit-evaluator): the common evaluator this adapter's results are composed through — composition, reporting, and routing over the engine-produced result; installed automatically by `assess` when missing |
 | This adapter | extension ID `aee` | [electrohire/spec-kit-aee](https://github.com/electrohire/spec-kit-aee): ten agent commands and optional lifecycle hooks |
 
-The engine needs 1.4.0 for the policy-gate, reliability, and review CLI surface (1.0.2 introduced the `gaps` command), and the runner enforces that floor itself: at startup it checks `aee --version` against `>=1.5.0,<2` and refuses with exit 2 — naming the found and required versions — rather than scoring with an out-of-range engine. The Evaluator Contract result is produced by the engine itself, and the evaluator extension is a **required companion** to this adapter: AEE is one evaluator among many by design, and its results are composed through that common evaluator so every evaluator's output is handled the same way. The runner enforces the pairing itself — `assess` refuses with exit 2, naming the missing extension, when the evaluator extension is not installed in the project. The evaluator extension is a Spec Kit extension, **not** a PyPI package or shell executable. Spec Kit's
-`requires.tools` metadata documents dependencies; it does not install them or
-verify their versions, which is why the runner checks this one itself. Install the engine explicitly before this adapter, and install the evaluator extension together with it — the pair is one system.
+The engine needs 1.5.0, the realigned engine (Spec 004 vocabulary, methodology 2.0), and the runner enforces the range itself by checking `aee --version` against `>=1.5.0,<2`. The Evaluator Contract result is produced by the engine itself, and the evaluator extension is a **required companion** to this adapter: AEE is one evaluator among many by design, and its results are composed through that common evaluator so every evaluator's output is handled the same way. The evaluator extension is a Spec Kit extension, **not** a PyPI package or shell executable.
+
+Spec Kit's `requires.tools` metadata documents dependencies; it does not install them or verify their versions. The runner (`scripts/python/run_aee.py`, which every AEE command calls) therefore installs both itself:
+
+- **Engine.** If the Python running the adapter lacks an in-range `aee` command or importable `aee` package, the first AEE command creates a private environment at `.specify/extensions/aee/.runtime/venv`, installs `applied-epistemic-engineering>=1.5.0,<2` and the evaluator composer's `jsonschema>=4.0` from PyPI into it, and uses it from then on. Each later run checks that environment's `aee` version and imports its packages on its own interpreter; if that check fails (for example after damage), the environment is rebuilt from scratch. Removing the extension removes it. An engine you install yourself in the active Python takes precedence.
+- **Evaluator extension.** If `.specify/extensions/evaluator/` is absent, `assess` (or `compose`) downloads the pinned spec-kit-evaluator v1.1.1 archive, verifies its SHA-256, and installs it with `specify extension add evaluator` (the `specify` command must be on PATH).
+
+Set `SPECKIT_AEE_AUTO_INSTALL=0` to disable both installs; an already provisioned runtime environment is still used. When something is missing, the runner then refuses with exit 2 and names the manual install command instead, as it does when an automatic install fails (for example, offline).
 
 For a new project, install Spec Kit using its [official installation
 instructions](https://github.com/github/spec-kit#-get-started), then run
 `specify init my-project` and `cd my-project`. Choose your agent during setup.
-For an existing project, use its current Python environment or create one:
+In a new or existing project, install the adapter; its dependencies follow
+automatically:
 
 ```bash
-python -m venv .venv
+specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.5.0.zip
+specify extension list
 ```
 
-Activate with `source .venv/bin/activate` on macOS/Linux, or
-`.\.venv\Scripts\Activate.ps1` in PowerShell. If PowerShell policy prevents
-activation, use `.\.venv\Scripts\python.exe` for pip and put
-`.\.venv\Scripts` on the agent process's PATH. Keep the same environment active
-when launching your coding agent so it can find both `python` and `aee`.
+The first AEE command provisions the engine and the first `assess` installs the
+evaluator extension (both need network access once). To install them up front
+instead, for example on an offline or locked-down machine, run these in the
+Python environment your coding agent uses:
 
 ```bash
 python -m pip install "applied-epistemic-engineering>=1.5.0,<2"
 aee --version
-# Required companion: the common evaluator AEE's results are composed through.
-specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.1.0.zip
-specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.4.0.zip
-specify extension list
+specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.1.1.zip
 ```
 
-The commands above install the current published releases (this adapter's
+The commands above install the current releases (this adapter's
 archive tag always matches the version in `extension.yml`). To test
 unreleased changes, clone this repository, check out the PR branch, then run
 `specify extension add --dev /absolute/path/to/spec-kit-aee` from a disposable
@@ -137,7 +140,7 @@ Assessments produced through the runner carry `metadata.extension_version` (the 
 | `speckit.aee.route-evidence` | Route oversized logs and sources into raw evidence slices for AEE gates |
 | `speckit.aee.report-savings` | Report measured RTK and Headroom token savings, never estimated |
 
-Compose AEE with other evaluators using `/speckit.evaluator.compose`, render it with `/speckit.evaluator.report`, or use `/speckit.evaluator.route` for the next-phase model recommendation. Invocation separators vary by integration; Spec Kit renders the installed command files appropriately.
+Compose AEE with other evaluators using `python .specify/extensions/aee/scripts/python/run_aee.py compose --phase <phase>`. It runs the evaluator's Python composer with dependencies AEE provisions. `/speckit.evaluator.compose` gives the same composition, but its Bash variant needs `jq` and its Python variant needs `jsonschema` in the project's or PATH's Python, which AEE does not install. Render the result with `/speckit.evaluator.report`, or use `/speckit.evaluator.route` for the next-phase model recommendation. Invocation separators vary by integration; Spec Kit renders the installed command files appropriately.
 
 ## Files written
 
@@ -178,8 +181,8 @@ structured evidence. Review findings and references before acting on an outcome.
 
 | Symptom | Next step |
 | --- | --- |
-| `aee` is missing or `gaps` is unrecognized | Activate the engine environment, run `aee --version`, and install engine `>=1.0.2,<2`. |
-| Evaluator commands are missing | Install `evaluator` using the explicit archive URL, run `specify extension list`, then restart the coding agent if needed. |
+| `aee` is missing or out of range | Check that automatic installation is enabled and has network access (the refusal names the failure), or install engine `>=1.5.0,<2` into the Python that runs the adapter and confirm with `aee --version`. |
+| Evaluator commands are missing | Run `assess` once with `specify` on PATH, or install `evaluator` from the explicit archive URL. Then run `specify extension list` and restart the coding agent if needed. |
 | No project / unknown slash command | Run `specify init` first and use the command spelling rendered for your selected agent. |
 | Exit 1 from an assessment | Read the result: `iterate`, `clarify`, and `gather_evidence` are expected recovery outcomes, not installation errors. |
 | Editing YAML has no effect | Pass the corresponding CLI flag; the adapter does not load that YAML. |

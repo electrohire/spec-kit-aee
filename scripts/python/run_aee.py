@@ -18,7 +18,9 @@ code can never mistake a failure for a scored outcome:
   ``assess`` without the required spec-kit-evaluator extension) and
   engine-reported input/usage errors. (The engine's own ``gate``
   command also uses ``2`` for a ``block`` verdict; that is the
-  engine's documented gate semantics, passed through unchanged.)
+  engine's documented gate semantics, passed through unchanged; so is
+  the evaluator composer's ``2`` for a composed ``block`` under
+  ``compose``, whose 0/1 codes likewise pass through.)
   Runner refusals print ``refused: ...`` to stderr and never leak a
   Python traceback.
 
@@ -116,11 +118,50 @@ cross-references are surfaced in the JSON summary as proposals.
 Drafting requires an engine build whose ``aee.extract`` provides the
 helper (engine builds after 1.4.0); an older importable engine makes
 ``draft-claims`` refuse cleanly (exit 2), naming the missing helper.
+
+Dependency provisioning
+-----------------------
+Spec Kit's ``requires.tools`` metadata is informational: ``specify
+extension add aee`` installs no Python packages and no companion
+extensions. The runner therefore provisions both itself, so an
+installed AEE extension works without manual setup:
+
+- Engine: when the invoking interpreter lacks an in-range ``aee``
+  CLI or an importable ``aee`` package (or, for ``compose``,
+  ``jsonschema>=4.0``), the runner creates a private virtual
+  environment at ``.specify/extensions/aee/.runtime/venv`` (inside
+  the installed extension, so ``specify extension remove aee``
+  removes it), installs ``applied-epistemic-engineering`` within
+  ``REQUIRED_AEE_VERSION`` plus ``COMPOSER_REQUIREMENT`` into it, and
+  re-runs itself with that environment's interpreter. Later runs
+  reuse the environment after probing its CLI version and importing
+  its packages on its own interpreter; an environment failing that
+  probe (missing, out of range, or damaged) is rebuilt from scratch
+  with ``venv --clear``.
+- Evaluator composer: ``compose`` runs the evaluator extension's own
+  ``compose_results.py`` on that interpreter, so composition needs
+  neither ``jq`` (Bash variant) nor jsonschema in a global Python.
+- Evaluator extension: when ``assess`` finds the required companion
+  missing, the runner downloads the pinned spec-kit-evaluator release
+  archive, verifies its SHA-256, and installs it with ``specify
+  extension add evaluator --from`` (served over loopback, the only
+  non-HTTPS source Spec Kit accepts). The community catalog is
+  discovery-only, so a catalog install would be refused.
+
+Set ``SPECKIT_AEE_AUTO_INSTALL=0`` to disable both installs; the
+runner then refuses (exit 2) with the manual install commands, as
+before. A runtime environment that is already provisioned and passes
+its probe is still used.
 """
 
 from __future__ import annotations
 
 import argparse
+import functools
+import hashlib
+import http.server
+import importlib.metadata
+import importlib.util
 import json
 import os
 import re
@@ -128,6 +169,9 @@ import secrets
 import shutil
 import subprocess
 import sys
+import tempfile
+import threading
+import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -138,6 +182,34 @@ REQUIRED_AEE_VERSION = ">=1.5.0,<2"
 _AEE_VERSION_MIN = (1, 5, 0)
 _AEE_VERSION_MAX = (2, 0, 0)  # exclusive
 _VERSION_PATTERN = re.compile(r"(\d+)\.(\d+)\.(\d+)")
+ENGINE_REQUIREMENT = f"applied-epistemic-engineering{REQUIRED_AEE_VERSION}"
+# The evaluator's Python composer hard-requires this (its
+# requirements.txt). `compose` runs that composer on the runner's
+# interpreter, so the runtime environment carries it too.
+COMPOSER_REQUIREMENT = "jsonschema>=4.0"
+_JSONSCHEMA_VERSION_MIN = (4, 0, 0)
+
+AUTO_INSTALL_ENV = "SPECKIT_AEE_AUTO_INSTALL"
+# The extension directory (.specify/extensions/aee once installed).
+_EXTENSION_DIR = Path(__file__).resolve().parents[2]
+RUNTIME_VENV = _EXTENSION_DIR / ".runtime" / "venv"
+
+# Pinned spec-kit-evaluator version installed when assess finds the
+# required companion missing. Within extension.yml
+# requires.tools[spec-kit-evaluator]; update version, URL, and digest
+# together.
+EVALUATOR_VERSION = "1.1.1"
+# The published v1.1.1 release archive (tag commit b2aa01e) and its
+# SHA-256, verified against the public download.
+EVALUATOR_ARCHIVE_URL = (
+    "https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/"
+    f"v{EVALUATOR_VERSION}.zip"
+)
+EVALUATOR_ARCHIVE_SHA256 = (
+    "79a54460d37ee2b760daf52b4f54a21ce30d43e763aba2c93901b24db7281151"
+)
+_EVALUATOR_ARCHIVE_MAX_BYTES = 16 * 1024 * 1024
+_EVALUATOR_INSTALL_COMMAND = f"specify extension add evaluator --from {EVALUATOR_ARCHIVE_URL}"
 
 
 def parser() -> argparse.ArgumentParser:
@@ -204,23 +276,46 @@ def parser() -> argparse.ArgumentParser:
     draft = sub.add_parser("draft-claims")
     draft.add_argument("--spec", type=Path, required=True)
     draft.add_argument("--output", type=Path)
+
+    compose = sub.add_parser("compose")
+    compose.add_argument("--phase", required=True)
+    compose.add_argument(
+        "--strategy", choices=["strict", "majority", "optimistic"], default="strict"
+    )
+    compose.add_argument("--output", type=Path)
     return root
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = parser().parse_args(argv)
+    raw_argv = sys.argv[1:] if argv is None else list(argv)
+    args = parser().parse_args(raw_argv)
     try:
         root = args.project_root.resolve(strict=True)
         _reject_symlink_chain(root, root)
-        executable = shutil.which("aee")
+        probe_timeout = min(30.0, args.timeout)
+        executable = _find_aee()
+        needs_composer = args.command == "compose"
+        if not _in_runtime() and (
+            not _engine_ready(executable, probe_timeout)
+            or (needs_composer and not _jsonschema_importable())
+        ):
+            # An already provisioned runtime is used even when automatic
+            # installation is disabled: the switch governs installing,
+            # not using what is installed.
+            python = _venv_python(RUNTIME_VENV)
+            if _runtime_ready(python, probe_timeout):
+                return _rerun_in_runtime(python, raw_argv)
+            if _auto_install_enabled():
+                python = _ensure_runtime(args.timeout)
+                return _rerun_in_runtime(python, raw_argv)
         if executable is None:
             print(
                 "refused: missing required 'aee' command. Install "
-                f"applied-epistemic-engineering{REQUIRED_AEE_VERSION}.",
+                f"{ENGINE_REQUIREMENT}{_auto_install_hint()}.",
                 file=sys.stderr,
             )
             return 2
-        _check_aee_version(executable, timeout=min(30.0, args.timeout))
+        _check_aee_version(executable, timeout=probe_timeout)
         if args.command == "assess":
             return _assess(executable, root, args)
         if args.command == "challenge":
@@ -237,12 +332,360 @@ def main(argv: list[str] | None = None) -> int:
             return _review(executable, root, args)
         if args.command == "draft-claims":
             return _draft_claims(root, args)
+        if args.command == "compose":
+            return _compose(root, args)
         raise AssertionError("unreachable")
     except (ValueError, TypeError, OSError) as exc:
         # Runner refusals and OS-level failures are errors (exit 2),
         # never scored verdicts, and never surface as tracebacks.
         print(f"refused: {exc}", file=sys.stderr)
         return 2
+
+
+def _auto_install_enabled() -> bool:
+    value = os.environ.get(AUTO_INSTALL_ENV, "1").strip().lower()
+    return value not in {"0", "false", "no", "off"}
+
+
+def _auto_install_hint() -> str:
+    if _auto_install_enabled():
+        return ""
+    return f" (automatic installation is disabled by {AUTO_INSTALL_ENV})"
+
+
+def _venv_bin(venv: Path) -> Path:
+    return venv / ("Scripts" if os.name == "nt" else "bin")
+
+
+def _venv_python(venv: Path) -> Path:
+    return _venv_bin(venv) / ("python.exe" if os.name == "nt" else "python")
+
+
+def _in_runtime() -> bool:
+    """True when this process runs on the private runtime interpreter."""
+    try:
+        return Path(sys.prefix).resolve() == RUNTIME_VENV.resolve()
+    except OSError:
+        return False
+
+
+def _find_aee() -> str | None:
+    """The engine CLI: the runtime's own when running there, else PATH."""
+    if _in_runtime():
+        found = shutil.which("aee", path=str(_venv_bin(RUNTIME_VENV)))
+        if found is not None:
+            return found
+    return shutil.which("aee")
+
+
+def _engine_importable() -> bool:
+    """True when this interpreter can import an in-range aee package."""
+    try:
+        if importlib.util.find_spec("aee") is None:
+            return False
+        version = importlib.metadata.version("applied-epistemic-engineering")
+    except (ImportError, ValueError, importlib.metadata.PackageNotFoundError):
+        return False
+    parsed = _parse_aee_version(version)
+    return parsed is not None and _aee_version_satisfies(parsed)
+
+
+def _jsonschema_importable() -> bool:
+    """True when this interpreter can import jsonschema >= 4.0."""
+    try:
+        if importlib.util.find_spec("jsonschema") is None:
+            return False
+        version = importlib.metadata.version("jsonschema")
+    except (ImportError, ValueError, importlib.metadata.PackageNotFoundError):
+        return False
+    parsed = _parse_aee_version(version)
+    return parsed is not None and parsed >= _JSONSCHEMA_VERSION_MIN
+
+
+# Run on the runtime interpreter: imports what the runner and the
+# evaluator composer actually load there, and checks both versions.
+_RUNTIME_PROBE = f"""
+import importlib.metadata as m, re, sys
+def v(dist):
+    return tuple(int(p) for p in re.match(r"(\\d+)\\.(\\d+)\\.(\\d+)", m.version(dist)).groups())
+try:
+    import aee.ledger, jsonschema
+    ok = {_AEE_VERSION_MIN} <= v("applied-epistemic-engineering") < {_AEE_VERSION_MAX}
+    ok = ok and v("jsonschema") >= {_JSONSCHEMA_VERSION_MIN}
+except Exception:
+    ok = False
+sys.exit(0 if ok else 1)
+"""
+
+
+def _runtime_ready(python: Path, timeout: float) -> bool:
+    """True when the runtime's CLI and its interpreter's packages are in range.
+
+    Checking only the CLI would trust an environment whose package
+    files were damaged while the console script still answers
+    --version; the probe imports the modules for real.
+    """
+    executable = shutil.which("aee", path=str(_venv_bin(RUNTIME_VENV)))
+    if not python.is_file() or executable is None:
+        return False
+    try:
+        _check_aee_version(executable, timeout=timeout)
+        probe = subprocess.run(
+            [str(python), "-c", _RUNTIME_PROBE],
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (ValueError, OSError, subprocess.SubprocessError):
+        return False
+    return probe.returncode == 0
+
+
+def _engine_ready(executable: str | None, timeout: float) -> bool:
+    """True when both the CLI and the importable package are in range."""
+    if executable is None or not _engine_importable():
+        return False
+    try:
+        _check_aee_version(executable, timeout=timeout)
+    except ValueError:
+        return False
+    return True
+
+
+def _run_setup_step(command: list[str], timeout: float, what: str) -> None:
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError(f"{what} timed out after {timeout:g} seconds") from exc
+    except OSError as exc:
+        raise ValueError(f"{what} could not start: {exc}") from exc
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout).strip()[-2000:]
+        raise ValueError(f"{what} failed (exit {completed.returncode}): {detail}")
+
+
+def _ensure_runtime(timeout: float) -> Path:
+    """Create or repair the private engine environment; return its python.
+
+    Raises ValueError (exit 2 through main) naming the manual install
+    when the environment cannot be built, e.g. without network access
+    or without the interpreter's venv/ensurepip support.
+    """
+    python = _venv_python(RUNTIME_VENV)
+    probe_timeout = min(30.0, timeout)
+    if _runtime_ready(python, probe_timeout):
+        return python
+    # Missing, out of range, or damaged: (re)build from scratch. --clear
+    # empties an existing environment first, so a broken interpreter or
+    # package tree is replaced rather than patched.
+    shown = RUNTIME_VENV.relative_to(_EXTENSION_DIR.parent).as_posix()
+    print(
+        f"note: installing {ENGINE_REQUIREMENT} and {COMPOSER_REQUIREMENT} "
+        f"into the AEE runtime environment .../{shown} (set "
+        f"{AUTO_INSTALL_ENV}=0 to disable automatic installation)",
+        file=sys.stderr,
+    )
+    manual = (
+        f"; install {ENGINE_REQUIREMENT} (and {COMPOSER_REQUIREMENT} for "
+        f"compose) into the Python that runs this script instead, or set "
+        f"{AUTO_INSTALL_ENV}=0"
+    )
+    try:
+        RUNTIME_VENV.parent.mkdir(parents=True, exist_ok=True)
+        ignore = RUNTIME_VENV.parent / ".gitignore"
+        if not ignore.exists():
+            ignore.write_text("# AEE runtime environment; generated.\n*\n", encoding="utf-8")
+        _run_setup_step(
+            [sys.executable, "-m", "venv", "--clear", str(RUNTIME_VENV)],
+            timeout,
+            "creating the AEE runtime environment",
+        )
+        _run_setup_step(
+            [
+                str(python),
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "--no-input",
+                "--quiet",
+                ENGINE_REQUIREMENT,
+                COMPOSER_REQUIREMENT,
+            ],
+            timeout,
+            f"installing {ENGINE_REQUIREMENT}",
+        )
+    except (ValueError, OSError) as exc:
+        raise ValueError(f"{exc}{manual}") from exc
+    if not _runtime_ready(python, probe_timeout):
+        raise ValueError(
+            f"the rebuilt AEE runtime environment does not provide an "
+            f"importable, in-range {ENGINE_REQUIREMENT} with its 'aee' "
+            f"command and {COMPOSER_REQUIREMENT}{manual}"
+        )
+    return python
+
+
+def _rerun_in_runtime(python: Path, argv: list[str]) -> int:
+    """Run this same invocation on the runtime interpreter."""
+    try:
+        return subprocess.run(
+            [str(python), str(Path(__file__).resolve()), *argv], check=False
+        ).returncode
+    except OSError as exc:
+        raise ValueError(f"could not start the AEE runtime interpreter: {exc}") from exc
+
+
+class _QuietHandler(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *_args: object) -> None:
+        pass
+
+
+def _download_evaluator_archive(target: Path, timeout: float) -> None:
+    """Download the pinned evaluator archive and verify its SHA-256."""
+    try:
+        with urllib.request.urlopen(EVALUATOR_ARCHIVE_URL, timeout=timeout) as response:
+            data = response.read(_EVALUATOR_ARCHIVE_MAX_BYTES + 1)
+    except OSError as exc:
+        raise ValueError(f"could not download {EVALUATOR_ARCHIVE_URL}: {exc}") from exc
+    if len(data) > _EVALUATOR_ARCHIVE_MAX_BYTES:
+        raise ValueError(f"{EVALUATOR_ARCHIVE_URL} exceeds the expected archive size")
+    digest = hashlib.sha256(data).hexdigest()
+    if digest != EVALUATOR_ARCHIVE_SHA256:
+        raise ValueError(
+            f"{EVALUATOR_ARCHIVE_URL} has SHA-256 {digest}, expected "
+            f"{EVALUATOR_ARCHIVE_SHA256}; refusing to install it"
+        )
+    target.write_bytes(data)
+
+
+def _install_evaluator_extension(root: Path, timeout: float) -> None:
+    """Install the required evaluator companion into the project.
+
+    Raises ValueError (exit 2 through main) with the manual command
+    when Spec Kit is unavailable or the install does not complete.
+    """
+    manual = f"; install it manually: {_EVALUATOR_INSTALL_COMMAND}"
+    specify = shutil.which("specify")
+    if specify is None:
+        raise ValueError(
+            "the spec-kit-evaluator extension is required for assess but "
+            "is not installed, and the 'specify' command needed to "
+            f"install it is not on PATH{manual}"
+        )
+    print(
+        "note: installing the required spec-kit-evaluator extension from "
+        f"{EVALUATOR_ARCHIVE_URL} (set {AUTO_INSTALL_ENV}=0 to disable "
+        "automatic installation)",
+        file=sys.stderr,
+    )
+    with tempfile.TemporaryDirectory(prefix="aee-evaluator-") as directory:
+        archive = Path(directory) / "spec-kit-evaluator.zip"
+        try:
+            _download_evaluator_archive(archive, timeout)
+        except ValueError as exc:
+            raise ValueError(f"{exc}{manual}") from exc
+        handler = functools.partial(_QuietHandler, directory=directory)
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        url = f"http://127.0.0.1:{server.server_address[1]}/{archive.name}"
+        try:
+            # `--from` asks for confirmation; the source was verified above.
+            # The extension directory is absent (the only case this runs),
+            # so --force overwrites nothing on disk; it clears a stale
+            # registry entry left by a manually deleted directory, which
+            # Spec Kit would otherwise report as "already installed".
+            completed = subprocess.run(
+                [specify, "extension", "add", "evaluator", "--from", url, "--force"],
+                cwd=root,
+                input="y\n",
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+                check=False,
+                env={**os.environ, "PYTHONIOENCODING": "utf-8", "NO_COLOR": "1"},
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise ValueError(f"could not run 'specify extension add': {exc}{manual}") from exc
+        finally:
+            server.shutdown()
+            server.server_close()
+    if completed.returncode != 0 or not (root / ".specify" / "extensions" / "evaluator").is_dir():
+        detail = (completed.stdout + completed.stderr).strip()[-2000:]
+        raise ValueError(
+            "installing the required spec-kit-evaluator extension failed "
+            f"(exit {completed.returncode}): {detail}{manual}"
+        )
+
+
+def _ensure_evaluator(root: Path, timeout: float) -> bool:
+    """Install the evaluator companion when missing; return its presence.
+
+    The install goes through Spec Kit itself, so the presence sample
+    still reflects a real installation (RT3-04).
+    """
+    evaluator_dir = root / ".specify" / "extensions" / "evaluator"
+    if not evaluator_dir.is_dir() and _auto_install_enabled():
+        _install_evaluator_extension(root, timeout)
+    return evaluator_dir.is_dir()
+
+
+def _compose(root: Path, args: argparse.Namespace) -> int:
+    """Run the evaluator's own Python composer on this interpreter.
+
+    The rendered speckit.evaluator.compose command runs whichever
+    composer variant the project's script type selects: Bash needs
+    `jq`, and Python needs jsonschema in the project's or PATH's
+    interpreter, which the runner must not modify. Here the composer
+    runs on the runner's interpreter, which main() has already made
+    the runtime environment (carrying COMPOSER_REQUIREMENT) when this
+    one lacks it. The composer's output and exit code pass through
+    unchanged; the composition logic stays the evaluator's.
+    """
+    if not _ensure_evaluator(root, args.timeout):
+        raise ValueError(
+            "compose needs the spec-kit-evaluator extension, which is not "
+            f"installed in this project; install it: {_EVALUATOR_INSTALL_COMMAND}"
+            f"{_auto_install_hint()}"
+        )
+    if not _jsonschema_importable():
+        raise ValueError(
+            f"compose needs {COMPOSER_REQUIREMENT} importable by this Python "
+            f"({sys.executable}); install it there{_auto_install_hint()}"
+        )
+    composer = _safe_existing(
+        root, Path(".specify/extensions/evaluator/scripts/python/compose_results.py")
+    )
+    results_rel = Path(".specify/extensions/evaluator/results")
+    if not (root / results_rel).is_dir():
+        raise ValueError(
+            f"no evaluator results to compose ({results_rel.as_posix()} not "
+            "found); run assess or another evaluator first"
+        )
+    results = _safe_dir(root, results_rel)
+    command = [
+        sys.executable,
+        str(composer),
+        "--results-dir",
+        str(results),
+        "--phase",
+        _safe_segment(args.phase),
+        "--strategy",
+        args.strategy,
+    ]
+    if args.output:
+        command.extend(["--output", str(_safe_output(root, args.output))])
+    return _run_engine(command, args.timeout).returncode
 
 
 def _parse_aee_version(text: str) -> tuple[int, int, int] | None:
@@ -620,7 +1063,7 @@ def _resolve_latest(root: Path, phase_arg: str) -> Path:
     target = _safe_existing(root, Path(str(target_rel)))
     age_note = ""
     try:
-        written = datetime.fromisoformat(str(written_at).replace("Z", "+00:00"))
+        written = datetime.fromisoformat(str(written_at))
         age = datetime.now(UTC) - written
         age_note = f", age {int(age.total_seconds())}s"
     except ValueError:
@@ -755,9 +1198,7 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
     # runner itself creates .specify/extensions/evaluator/results/ for
     # the engine-produced contract result, so checking afterwards
     # would always report a phantom installation (RT3-04).
-    evaluator_extension_present = (
-        root / ".specify" / "extensions" / "evaluator"
-    ).is_dir()
+    evaluator_extension_present = _ensure_evaluator(root, args.timeout)
     if not evaluator_extension_present:
         # Spec 005 (ER-01): the evaluator extension is a required
         # companion, not an optional extra. Refuse here — after the
@@ -772,9 +1213,8 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
             "composing it with other evaluators' results through "
             "that extension is part of the standard flow, so every "
             "evaluator's output is handled the same way. Install the "
-            "pair together: specify extension add spec-kit-evaluator "
-            "(see the Spec Kit catalog or this extension's README), "
-            "then re-run assess."
+            f"pair together: {_EVALUATOR_INSTALL_COMMAND}"
+            f"{_auto_install_hint()}, then re-run assess."
         )
     stamp = _unique_stamp()
     phase = _safe_segment(args.phase)
