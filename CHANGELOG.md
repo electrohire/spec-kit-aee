@@ -2,6 +2,65 @@
 
 All notable changes follow Semantic Versioning.
 
+## 1.5.0 - Unreleased
+
+- Self-provisioned dependencies: `specify extension add aee` is now
+  the only install step. Spec Kit's `requires.tools` is informational,
+  so the runner installs what the manifest requires itself. When the
+  invoking Python lacks an in-range engine (CLI and importable package),
+  the runner builds a private environment at
+  `.specify/extensions/aee/.runtime/venv`, installs
+  `applied-epistemic-engineering>=1.5.0,<2` into it, and re-runs itself
+  there. When `assess` finds the evaluator extension missing, it
+  downloads the pinned spec-kit-evaluator v1.1.1 archive, verifies its
+  SHA-256, and installs it through `specify extension add evaluator`
+  (served over loopback, because the community catalog is
+  discovery-only). `SPECKIT_AEE_AUTO_INSTALL=0` restores the previous
+  refusals (exit 2), which now name the manual command.
+- The runtime environment also carries `jsonschema>=4.0`, the evaluator
+  Python composer's hard dependency. A new `compose` operation runs that
+  composer (the evaluator's own code, output and exit codes unchanged) on
+  the runner's interpreter. Composition then needs neither `jq` (the
+  Bash variant) nor jsonschema in a project or global Python, which
+  Spec Kit's rendered `speckit.evaluator.compose` would require, and the
+  assess command document routes composition through it.
+- Runtime reuse probes the environment's interpreter, importing
+  `aee.ledger` and `jsonschema` and checking both versions, not only the
+  CLI version. An environment failing the probe is rebuilt with
+  `venv --clear`. With `SPECKIT_AEE_AUTO_INSTALL=0` a provisioned runtime
+  that passes the probe is still used; the switch stops installs only.
+- Evaluator pin: spec-kit-evaluator 1.1.1 **release candidate**, the
+  immutable commit archive `578cc11` with its SHA-256
+  (electrohire/spec-kit-evaluator#7). It fixes the composer failing to
+  parse on Python 3.11, which made `compose` fail there with the 1.1.0 pin.
+  Before release, move it to the published `v1.1.1` tag archive.
+- CI `acceptance` job on all targets: Spec Kit alone (new hashed
+  `requirements/acceptance.txt`), AEE installed by `specify` from this
+  commit's GitHub archive (`check_install.py --from-url`), and the runner on a
+  package-free Python installing the engine, jsonschema, and the pinned
+  Evaluator, whose version the check asserts. The required `validate` gate
+  needs both the test and acceptance matrices.
+- `check_install.py --clean-interpreter` runs the installed runner on a
+  fresh package-free Python with no `aee` on PATH (only `specify`), so
+  the engine, jsonschema, and the evaluator must all be installed by
+  AEE itself. CI now runs the same 3 OS x Python 3.11/3.12/3.13 matrix as
+  the engine (macOS included), with every test and install check on
+  each target.
+- Fix: the evaluator refusal and the assess command document told
+  users to run `specify extension add spec-kit-evaluator`. That ID does
+  not exist; they now give the working `specify extension add evaluator
+  --from <archive>` command.
+- The gaps, review, and assess command documents no longer tell the
+  agent to stop when `aee` is absent; that stop prevented automatic
+  provisioning.
+- `check_install.py` takes `--evaluator-dir` as optional and also checks
+  that `assess` reinstalls a removed evaluator extension. CI pins
+  the spec-kit-evaluator 1.1.1 release candidate (see below).
+- Dev lock: specify-cli 1.2.0 (from 1.0.13), ruff 0.17.1, hypothesis
+  6.169.4, compiled with `--universal` so the hashed lock installs on
+  both the Linux and Windows CI legs. Fixed the new ruff FURB162
+  finding (Python 3.11+ parses `Z` offsets natively).
+
 ## 1.4.0 - 2026-10-12
 
 - Design correction (specs/005-evaluator-required): the

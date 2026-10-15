@@ -115,7 +115,7 @@ Assessment/gate exit codes:
 | 1 | `iterate`, `clarify`, or `gather_evidence`; recovery is needed |
 | 2 | `block` (gate), or an error — never a scored assess/challenge verdict |
 
-Errors include runner refusals (missing, out-of-root, or symlinked paths; an invalid phase; a missing `aee`; an installed `aee` version outside the required `>=1.5.0,<2`, which the runner checks itself at startup and reports by name; or `assess` run without the required evaluator extension) and engine-reported input/usage errors. Runner refusals print `refused: ...` to stderr and never a Python traceback. Do not interpret every nonzero process code as a scored
+Errors include runner refusals (missing, out-of-root, or symlinked paths; an invalid phase; a missing or out-of-range `aee` engine, or a missing evaluator extension for `assess`, when the runner's automatic installation of it is disabled with `SPECKIT_AEE_AUTO_INSTALL=0` or fails) and engine-reported input/usage errors. Runner refusals print `refused: ...` to stderr and never a Python traceback. Do not interpret every nonzero process code as a scored
 assessment outcome. Do not globally suppress failures in CI to accommodate an
 expected recovery outcome: assert the expected outcome and inspect the artifacts.
 
@@ -126,13 +126,18 @@ otherwise the field is `null` (the runner never emits a phantom path).
 `assess` also names its `latest_pointer` (see the gate section above).
 `assess` also reports `evaluator_extension_present`: the Evaluator
 Contract result itself is produced by the engine, and the separate
-evaluator extension is a required companion — `assess` refuses
-(exit 2, naming the missing extension) when it is not installed in
-the project, because composing results through the common evaluator
-is part of the standard flow.
+evaluator extension is a required companion, because composing
+results through the common evaluator is part of the standard flow.
+When it is not installed in the project, `assess` installs the pinned
+release through `specify extension add evaluator` first, and refuses
+(exit 2, naming the missing extension) only if that is disabled or
+fails.
 
-For multiple evaluator results, use `/speckit.evaluator.compose phase=after_specify
-strategy=strict`, then `/speckit.evaluator.report phase=after_specify format=terminal`.
+For multiple evaluator results, run
+`python .specify/extensions/aee/scripts/python/run_aee.py compose --phase after_specify --strategy strict`
+(the evaluator's Python composer, using the jsonschema AEE provisions), or
+`/speckit.evaluator.compose phase=after_specify strategy=strict` if your project's
+script variant's prerequisites (`jq` for Bash, `jsonschema` for Python) are met; then `/speckit.evaluator.report phase=after_specify format=terminal`.
 These agent commands come from the evaluator extension. AEE does not
 silently compose results or run every other evaluator for you.
 

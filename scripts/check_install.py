@@ -85,7 +85,13 @@ def _rmtree(root: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--evaluator-dir", type=Path, required=True)
+    parser.add_argument(
+        "--evaluator-dir",
+        type=Path,
+        default=None,
+        help="install the evaluator extension from this directory first; "
+        "without it, the AEE runner installs its pinned release itself",
+    )
     parser.add_argument("--aee-dir", type=Path, default=ROOT)
     parser.add_argument(
         "--from-archive",
@@ -94,8 +100,23 @@ def main() -> None:
         help="install the AEE extension from this release zip instead "
         "of the local --aee-dir directory",
     )
+    parser.add_argument(
+        "--from-url",
+        default=None,
+        help="install the AEE extension by passing this archive URL "
+        "(e.g. an immutable GitHub commit or tag archive) to specify",
+    )
+    parser.add_argument(
+        "--clean-interpreter",
+        action="store_true",
+        help="run the installed runner on a fresh package-free Python with "
+        "no aee on PATH (only specify), so it must provision the engine "
+        "and jsonschema from the package index itself",
+    )
     args = parser.parse_args()
-    evaluator = args.evaluator_dir.resolve(strict=True)
+    evaluator = (
+        args.evaluator_dir.resolve(strict=True) if args.evaluator_dir else None
+    )
     specify = shutil.which("specify")
     check(
         specify is not None,
@@ -105,32 +126,88 @@ def main() -> None:
     aee_source: Path | None = None
     server: http.server.ThreadingHTTPServer | None = None
     archive_url: str | None = None
-    if args.from_archive is not None:
+    check(
+        not (args.from_archive and args.from_url),
+        "--from-archive and --from-url are mutually exclusive",
+    )
+    if args.from_url is not None:
+        archive_url = args.from_url
+    elif args.from_archive is not None:
         archive = args.from_archive.resolve(strict=True)
         server, archive_url = _serve_archive(archive)
     else:
         aee_source = args.aee_dir.resolve(strict=True)
     env = {**os.environ, "PYTHONUTF8": "1", "NO_COLOR": "1"}
     try:
-        _run_checks(specify, evaluator, aee_source, archive_url, env)
+        _run_checks(specify, evaluator, aee_source, archive_url, env,
+                    args.clean_interpreter)
     finally:
         if server is not None:
             server.shutdown()
-    origin = "release archive" if archive is not None else "local directory"
+    origin = (
+        args.from_url if args.from_url
+        else "release archive" if archive is not None
+        else "local directory"
+    )
+    companion = "local directory" if evaluator is not None else "runner auto-install"
     print(f"PASS: initialized project, both extensions, ten rendered commands, "
-          f"five AEE hooks, resolved placeholders, and all six installed "
-          f"operations (aee installed from {origin})")
+          f"five AEE hooks, resolved placeholders, all seven installed "
+          f"operations, and evaluator reinstall by assess (aee installed "
+          f"from {origin}; evaluator first installed from {companion}; "
+          f"runner on {'a clean interpreter' if args.clean_interpreter else 'this interpreter'})")
+
+
+def _clean_interpreter(
+    tools: Path, specify: str, env: dict[str, str]
+) -> tuple[str, dict[str, str]]:
+    """A package-free venv and a PATH exposing specify but no aee.
+
+    PATH keeps system directories but drops every directory holding an
+    `aee` command (in CI that is the locked environment, which also
+    holds python and specify); specify comes back through a shim
+    directory containing only it.
+    """
+    venv = tools / "clean-venv"
+    subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)],
+                   check=True)
+    bin_dir = venv / ("Scripts" if os.name == "nt" else "bin")
+    shim = tools / "specify-only"
+    shim.mkdir()
+    if os.name == "nt":
+        shutil.copy2(specify, shim / Path(specify).name)
+    else:
+        (shim / "specify").symlink_to(specify)
+    kept = [
+        entry for entry in env.get("PATH", "").split(os.pathsep)
+        if entry and shutil.which("aee", path=entry) is None
+    ]
+    path = os.pathsep.join([str(bin_dir), str(shim), *kept])
+    clean_env = {**env, "PATH": path}
+    python = str(bin_dir / ("python.exe" if os.name == "nt" else "python"))
+    probe = subprocess.run(
+        [python, "-c", ("import importlib.util as u; raise SystemExit("
+                        "bool(u.find_spec('aee') or u.find_spec('jsonschema')))")],
+        env=clean_env, check=False,
+    )
+    check(probe.returncode == 0, "the clean interpreter must lack aee and jsonschema")
+    check(shutil.which("aee", path=path) is None, "no aee may remain on PATH")
+    check(shutil.which("specify", path=path) is not None, "specify must stay on PATH")
+    return python, clean_env
 
 
 def _run_checks(
     specify: str,
-    evaluator: Path,
+    evaluator: Path | None,
     aee_source: Path | None,
     archive_url: str | None,
     env: dict[str, str],
+    clean_interpreter: bool = False,
 ) -> None:
-    with tempfile.TemporaryDirectory(prefix="aee-install-") as directory:
+    with tempfile.TemporaryDirectory(prefix="aee-install-") as directory,             tempfile.TemporaryDirectory(prefix="aee-clean-python-") as tools:
         root = Path(directory)
+        python = sys.executable
+        if clean_interpreter:
+            python, env = _clean_interpreter(Path(tools), specify, env)
 
         def command(*parts: str, code: int = 0) -> str:
             # `specify extension add --from <url>` prompts
@@ -150,7 +227,8 @@ def _run_checks(
 
         command(specify, "init", "--here", "--integration", "claude",
                 "--ignore-agent-tools", "--non-interactive")
-        command(specify, "extension", "add", "--dev", str(evaluator))
+        if evaluator is not None:
+            command(specify, "extension", "add", "--dev", str(evaluator))
         if archive_url is not None:
             command(specify, "extension", "add", "aee", "--from", archive_url)
         else:
@@ -159,8 +237,8 @@ def _run_checks(
         listed = command(specify, "extension", "list", "--json")
         installed = {item["id"]: item for item in json.loads(listed)}
         check(
-            installed["evaluator"]["enabled"] and installed["aee"]["enabled"],
-            f"both extensions must be enabled after install: {listed}",
+            installed["aee"]["enabled"],
+            f"aee must be enabled after install: {listed}",
         )
         check(
             installed["aee"]["provides"]["commands"] == 10,
@@ -189,10 +267,50 @@ def _run_checks(
         claims["claims"][0]["status"] = "draft"
         claims["claims"][0]["evidence"] = []
         claims_path.write_text(json.dumps(claims))
-        result = command(sys.executable,
+        result = command(python,
                          str(root / ".specify/extensions/aee/scripts/python/run_aee.py"),
                          "assess", "--input", "claims.json", code=1)
         paths = json.loads(result)
+        if clean_interpreter:
+            # The clean interpreter has no engine and no jsonschema, so the
+            # runner must have provisioned its private runtime from the
+            # package index.
+            runtime = root / ".specify/extensions/aee/.runtime/venv"
+            runtime_python = runtime / (
+                "Scripts/python.exe" if os.name == "nt" else "bin/python"
+            )
+            probe = subprocess.run(
+                [str(runtime_python), "-c",
+                 ("import aee.ledger, jsonschema, importlib.metadata as m; "
+                  "print(m.version('applied-epistemic-engineering'), "
+                  "m.version('jsonschema'))")],
+                capture_output=True, text=True, check=False,
+            )
+            check(
+                probe.returncode == 0,
+                f"the runner must provision its runtime: {probe.stderr}",
+            )
+        # Without --evaluator-dir the runner installed its required
+        # companion itself during this first assess.
+        listed = command(specify, "extension", "list", "--json")
+        installed = {item["id"]: item for item in json.loads(listed)}
+        check(
+            "evaluator" in installed and installed["evaluator"]["enabled"],
+            f"both extensions must be enabled after the first assess: {listed}",
+        )
+        if evaluator is None:
+            # The runner installed its pinned evaluator, not another one.
+            pinned = re.search(
+                r'^EVALUATOR_VERSION = "([^"]+)"',
+                (root / ".specify/extensions/aee/scripts/python/run_aee.py")
+                .read_text(encoding="utf-8"),
+                re.MULTILINE,
+            )
+            check(
+                pinned is not None
+                and installed["evaluator"]["version"] == pinned.group(1),
+                f"the runner must install its pinned evaluator version: {listed}",
+            )
         check(
             (root / paths["assessment"]).is_file(),
             f"assess named a missing assessment file: {paths}",
@@ -202,18 +320,32 @@ def _run_checks(
             f"assess named a missing evaluator result: {paths}",
         )
         runner = str(root / ".specify/extensions/aee/scripts/python/run_aee.py")
-        command(sys.executable, runner, "gate", "--input", paths["assessment"], code=1)
-        verified = json.loads(command(sys.executable, runner, "verify"))
+        # The installed evaluator's real Python composer, run through the
+        # runner so its jsonschema dependency is provisioned with AEE's.
+        command(python, runner, "compose", "--phase", "plan",
+                "--output", "composed.json", code=1)
+        check(
+            (root / "composed.json").is_file(),
+            "compose wrote no composed.json; the evaluator composer failed "
+            "(see its stderr above)",
+        )
+        composed = json.loads((root / "composed.json").read_text(encoding="utf-8"))
+        check(
+            composed["phase"] == "after_plan" and composed["outcome"] == "iterate",
+            f"compose must combine the AEE result: {composed}",
+        )
+        command(python, runner, "gate", "--input", paths["assessment"], code=1)
+        verified = json.loads(command(python, runner, "verify"))
         check(
             verified["valid"] and verified["entries"] == 1,
             f"ledger must verify with exactly one entry: {verified}",
         )
-        graph = json.loads(command(sys.executable, runner, "graph", "--input", "claims.json"))
+        graph = json.loads(command(python, runner, "graph", "--input", "claims.json"))
         check(
             (root / graph["graph"]).is_file(),
             f"graph named a missing file: {graph}",
         )
-        challenge = json.loads(command(sys.executable, runner, "challenge",
+        challenge = json.loads(command(python, runner, "challenge",
                                        "--input", "claims.json", code=1))
         check(
             (root / challenge["challenge"]).is_file(),
@@ -223,7 +355,7 @@ def _run_checks(
             "| Test ID | Requirements | Layer | Gate |\n"
             "| T-API-001 | Returns 200 | integration | gate-1 |\n")
         (root / "evidence").mkdir()
-        command(sys.executable, runner, "gaps", "--matrix", "matrix.md",
+        command(python, runner, "gaps", "--matrix", "matrix.md",
                 "--evidence", "evidence", "--output", "GAPS.md")
         check(
             "**Open:** 1" in (root / "GAPS.md").read_text(),
@@ -233,7 +365,7 @@ def _run_checks(
         # runner: a missing input is a clean refusal (exit 2), never a
         # traceback and never the scored-verdict code 1.
         refused = subprocess.run(
-            [sys.executable, runner, "assess", "--input", "does-not-exist.json"],
+            [python, runner, "assess", "--input", "does-not-exist.json"],
             cwd=root, env=env, text=True, encoding="utf-8",
             capture_output=True, check=False,
         )
@@ -247,17 +379,18 @@ def _run_checks(
         )
         # Spec 005 (ER-04): the evaluator extension is a required
         # companion, enforced by the runner itself. Remove it from the
-        # installed project and the installed runner's assess must
-        # refuse — exit 2, naming the missing extension — instead of
-        # scoring without the common evaluator.
+        # installed project and, with automatic installation disabled,
+        # the installed runner's assess must refuse — exit 2, naming
+        # the missing extension — instead of scoring without the
+        # common evaluator.
         evaluator_dir = root / ".specify" / "extensions" / "evaluator"
         assessments_dir = root / ".specify" / "extensions" / "aee" / "assessments"
         before = {path.name for path in assessments_dir.glob("*.json")}
         _rmtree(evaluator_dir)
         refused = subprocess.run(
-            [sys.executable, runner, "assess", "--input", "claims.json"],
-            cwd=root, env=env, text=True, encoding="utf-8",
-            capture_output=True, check=False,
+            [python, runner, "assess", "--input", "claims.json"],
+            cwd=root, env={**env, "SPECKIT_AEE_AUTO_INSTALL": "0"}, text=True,
+            encoding="utf-8", capture_output=True, check=False,
         )
         check(
             refused.returncode == 2,
@@ -273,6 +406,18 @@ def _run_checks(
         check(
             {path.name for path in assessments_dir.glob("*.json")} == before,
             "a refused assess must not write a new assessment",
+        )
+        # With automatic installation enabled (the default), the same
+        # assess reinstalls the pinned evaluator release through Spec
+        # Kit and then scores (--no-ledger: the ledger refuses an exact
+        # replay of the assessment already recorded above).
+        reinstalled = json.loads(command(python, runner, "assess",
+                                         "--input", "claims.json", "--no-ledger",
+                                         code=1))
+        check(
+            reinstalled["evaluator_extension_present"]
+            and (evaluator_dir / "extension.yml").is_file(),
+            f"assess must reinstall the evaluator extension: {reinstalled}",
         )
 
 

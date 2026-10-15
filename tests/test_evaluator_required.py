@@ -110,7 +110,12 @@ def test_assess_refuses_without_evaluator_extension(tmp_path: Path) -> None:
     # The refusal names the missing extension and how to install it.
     assert "refused:" in completed.stderr
     assert "spec-kit-evaluator" in completed.stderr
-    assert "specify extension add spec-kit-evaluator" in completed.stderr
+    # The named command is one Spec Kit accepts: the catalog ID is
+    # `evaluator`, and the discovery-only community catalog requires
+    # an explicit --from archive.
+    assert "specify extension add evaluator --from https://" in completed.stderr
+    assert "specify extension add spec-kit-evaluator" not in completed.stderr
+    assert "SPECKIT_AEE_AUTO_INSTALL" in completed.stderr
     # Nothing was written: no assessment tree, and the runner did not
     # create the evaluator results directory it writes into.
     assert not (root / ".specify" / "extensions" / "aee").exists()
@@ -146,7 +151,7 @@ def test_other_commands_are_not_blocked_without_evaluator(
 
 def test_manifest_declares_evaluator_required() -> None:
     manifest = yaml.safe_load((ROOT / "extension.yml").read_text(encoding="utf-8"))
-    assert manifest["extension"]["version"] == "1.4.0"
+    assert manifest["extension"]["version"] == "1.5.0"
     tools = {tool["name"]: tool for tool in manifest["requires"]["tools"]}
     evaluator = tools["spec-kit-evaluator"]
     assert evaluator["required"] is True
