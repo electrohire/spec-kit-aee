@@ -27,8 +27,8 @@ and macOS with Python 3.11, 3.12, and 3.13, the same targets as the engine and
 the Evaluator.
 
 For a clean install smoke, clone the Evaluator dependency at the commit pinned
-in the CI workflow (currently the 1.1.1 release candidate
-`578cc11a6f674696629e2dcd04aef421f0aeb978`), then run:
+in the CI workflow (currently v1.1.1,
+`b2aa01e294b949ad18c301d41194badccb3a8196`), then run:
 
 ```bash
 python scripts/check_install.py --evaluator-dir /path/to/spec-kit-evaluator
@@ -83,10 +83,14 @@ be filed. Release checklist:
    `extension.yml`) and **publish** the GitHub release (not a draft; #4516
    failed on a draft release). Never move or reuse a published tag; fix
    forward with a new version.
-4. **Test the exact public archive** in a disposable project:
-   `python scripts/check_install.py --from-url https://github.com/electrohire/spec-kit-aee/archive/refs/tags/vX.Y.Z.zip --clean-interpreter`
-   (Spec Kit only, so AEE must install the engine, jsonschema, and the
-   Evaluator itself). Record the archive SHA-256.
+4. **Test the exact public archive.** Publishing the release runs the
+   `Acceptance` workflow against `archive/refs/tags/vX.Y.Z.zip` on every target,
+   asserting the installed version (rerun it with **Run workflow**, passing
+   `archive_url` and `expected_version`). Continue only when its `gate` job is
+   green. Locally:
+   `python scripts/check_install.py --from-url https://github.com/electrohire/spec-kit-aee/archive/refs/tags/vX.Y.Z.zip --clean-interpreter --expect-aee-version X.Y.Z`.
+   Record the archive SHA-256. If the release is broken, fix forward with a new
+   patch release.
 5. **File a new
    [Extension Submission](https://github.com/github/spec-kit/issues/new?template=extension_submission.yml)
    issue** stating that it updates the existing `aee` entry. Use the current

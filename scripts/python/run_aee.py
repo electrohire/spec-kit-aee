@@ -199,17 +199,14 @@ RUNTIME_VENV = _EXTENSION_DIR / ".runtime" / "venv"
 # requires.tools[spec-kit-evaluator]; update version, URL, and digest
 # together.
 EVALUATOR_VERSION = "1.1.1"
-# RELEASE CANDIDATE PIN: the immutable commit archive of the unreleased
-# 1.1.1 fix (electrohire/spec-kit-evaluator#7), so CI installs the fixed
-# dependency before it is published. Releasing requires replacing it
-# with archive/refs/tags/v1.1.1.zip and that archive's SHA-256
-# (CONTRIBUTING.md, release checklist).
+# The published v1.1.1 release archive (tag commit b2aa01e) and its
+# SHA-256, verified against the public download.
 EVALUATOR_ARCHIVE_URL = (
-    "https://github.com/electrohire/spec-kit-evaluator/archive/"
-    "578cc11a6f674696629e2dcd04aef421f0aeb978.zip"
+    "https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/"
+    f"v{EVALUATOR_VERSION}.zip"
 )
 EVALUATOR_ARCHIVE_SHA256 = (
-    "cad37adea667b5eb1a0b01505586a11a8fba69f4240703248a34fd64c5c14cda"
+    "79a54460d37ee2b760daf52b4f54a21ce30d43e763aba2c93901b24db7281151"
 )
 _EVALUATOR_ARCHIVE_MAX_BYTES = 16 * 1024 * 1024
 _EVALUATOR_INSTALL_COMMAND = f"specify extension add evaluator --from {EVALUATOR_ARCHIVE_URL}"

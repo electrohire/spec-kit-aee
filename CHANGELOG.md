@@ -2,7 +2,7 @@
 
 All notable changes follow Semantic Versioning.
 
-## 1.5.0 - Unreleased
+## 1.5.0 - 2026-10-15
 
 - Self-provisioned dependencies: `specify extension add aee` is now
   the only install step. Spec Kit's `requires.tools` is informational,
@@ -29,17 +29,20 @@ All notable changes follow Semantic Versioning.
   CLI version. An environment failing the probe is rebuilt with
   `venv --clear`. With `SPECKIT_AEE_AUTO_INSTALL=0` a provisioned runtime
   that passes the probe is still used; the switch stops installs only.
-- Evaluator pin: spec-kit-evaluator 1.1.1 **release candidate**, the
-  immutable commit archive `578cc11` with its SHA-256
-  (electrohire/spec-kit-evaluator#7). It fixes the composer failing to
-  parse on Python 3.11, which made `compose` fail there with the 1.1.0 pin.
-  Before release, move it to the published `v1.1.1` tag archive.
+- Evaluator pin: spec-kit-evaluator
+  [v1.1.1](https://github.com/electrohire/spec-kit-evaluator/releases/tag/v1.1.1)
+  release archive with its verified SHA-256. That release fixes the composer
+  failing to parse on Python 3.11, which made `compose` fail there with the
+  1.1.0 pin.
 - CI `acceptance` job on all targets: Spec Kit alone (new hashed
   `requirements/acceptance.txt`), AEE installed by `specify` from this
   commit's GitHub archive (`check_install.py --from-url`), and the runner on a
   package-free Python installing the engine, jsonschema, and the pinned
   Evaluator, whose version the check asserts. The required `validate` gate
-  needs both the test and acceptance matrices.
+  needs both the test and acceptance matrices. The same reusable
+  `acceptance.yml` runs on every published release against the exact public
+  tag archive (asserting the version via `--expect-aee-version`) and can be
+  dispatched with any archive URL.
 - `check_install.py --clean-interpreter` runs the installed runner on a
   fresh package-free Python with no `aee` on PATH (only `specify`), so
   the engine, jsonschema, and the evaluator must all be installed by
@@ -55,7 +58,7 @@ All notable changes follow Semantic Versioning.
   provisioning.
 - `check_install.py` takes `--evaluator-dir` as optional and also checks
   that `assess` reinstalls a removed evaluator extension. CI pins
-  the spec-kit-evaluator 1.1.1 release candidate (see below).
+  spec-kit-evaluator v1.1.1.
 - Dev lock: specify-cli 1.2.0 (from 1.0.13), ruff 0.17.1, hypothesis
   6.169.4, compiled with `--universal` so the hashed lock installs on
   both the Linux and Windows CI legs. Fixed the new ruff FURB162

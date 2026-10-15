@@ -107,6 +107,12 @@ def main() -> None:
         "(e.g. an immutable GitHub commit or tag archive) to specify",
     )
     parser.add_argument(
+        "--expect-aee-version",
+        default=None,
+        help="fail unless specify reports exactly this installed AEE "
+        "version (for checks of a published release archive)",
+    )
+    parser.add_argument(
         "--clean-interpreter",
         action="store_true",
         help="run the installed runner on a fresh package-free Python with "
@@ -140,7 +146,7 @@ def main() -> None:
     env = {**os.environ, "PYTHONUTF8": "1", "NO_COLOR": "1"}
     try:
         _run_checks(specify, evaluator, aee_source, archive_url, env,
-                    args.clean_interpreter)
+                    args.clean_interpreter, args.expect_aee_version)
     finally:
         if server is not None:
             server.shutdown()
@@ -202,6 +208,7 @@ def _run_checks(
     archive_url: str | None,
     env: dict[str, str],
     clean_interpreter: bool = False,
+    expect_aee_version: str | None = None,
 ) -> None:
     with tempfile.TemporaryDirectory(prefix="aee-install-") as directory,             tempfile.TemporaryDirectory(prefix="aee-clean-python-") as tools:
         root = Path(directory)
@@ -240,6 +247,12 @@ def _run_checks(
             installed["aee"]["enabled"],
             f"aee must be enabled after install: {listed}",
         )
+        if expect_aee_version is not None:
+            check(
+                installed["aee"]["version"] == expect_aee_version,
+                f"expected AEE {expect_aee_version}, specify installed "
+                f"{installed['aee']['version']}",
+            )
         check(
             installed["aee"]["provides"]["commands"] == 10,
             "aee must provide ten commands, got "
