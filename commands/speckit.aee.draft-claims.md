@@ -16,8 +16,8 @@ Accept `spec=<path>` (a spec markdown file, or a feature directory containing `s
 
 ## Prerequisites
 
-1. Confirm the `aee` command is available and reports version >=1.5.0,<2. The runner enforces this itself at startup: it runs `aee --version` and refuses with exit 2, naming the found and required versions.
-2. Drafting uses the engine's Python helper `aee.extract.draft_claims_from_spec` (the engine CLI has no drafting subcommand), so the engine package must be importable by the Python that runs the adapter, and it must be a build that provides the helper (engine builds after 1.4.0). An engine without the helper makes the runner refuse cleanly with exit 2 — it never falls back to inventing claims itself.
+1. Do not install the engine yourself. The runner uses an `aee` engine in the range >=1.5.0,<2 from the active Python; otherwise its first run installs `applied-epistemic-engineering>=1.5.0,<2` into `.specify/extensions/aee/.runtime` (this needs network access once). If the runner refuses (exit 2) because that install is disabled (`SPECKIT_AEE_AUTO_INSTALL=0`) or failed, stop and relay its message, which names the manual `python -m pip install "applied-epistemic-engineering>=1.5.0,<2"` command.
+2. Drafting uses the engine's Python helper `aee.extract.draft_claims_from_spec` (the engine CLI has no drafting subcommand); the runner calls it from the same Python that provides the engine (the runtime environment above when it installed one). An engine without the helper makes the runner refuse cleanly with exit 2 — it never falls back to inventing claims itself.
 3. Resolve the project root and the spec artifact. Never follow symlinks or read outside the project root.
 
 ## Execution

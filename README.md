@@ -25,7 +25,8 @@ AEE is a decision aid. It does **not** prove truth, certify compliance, replace 
 ## Installation
 
 Start with an initialized [Spec Kit](https://github.com/github/spec-kit) project and
-Python 3.11 or later. Run shell commands below in the project root. Agent slash
+Python 3.11 or later. Supported and tested on Linux, macOS, and Windows with Python
+3.11, 3.12, and 3.13. Run shell commands below in the project root. Agent slash
 commands belong in your coding agent's chat, not in PowerShell or Bash.
 
 | Required component | Install name / version | Repository and purpose |
@@ -52,7 +53,7 @@ In a new or existing project, install the adapter; its dependencies follow
 automatically:
 
 ```bash
-specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.5.0.zip
+specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.5.1.zip
 specify extension list
 ```
 
