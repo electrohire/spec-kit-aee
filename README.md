@@ -1,12 +1,12 @@
 # Applied Epistemic Engineering for Spec Kit
 
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15599/badge)](https://www.bestpractices.dev/en/projects/15599)
-
-OpenSSF assessment: 97%; reporting-history criteria remain unclaimed.
-
-[![Test](https://github.com/electrohire/spec-kit-aee/actions/workflows/test.yml/badge.svg)](https://github.com/electrohire/spec-kit-aee/actions/workflows/test.yml)
+[![CI](https://github.com/electrohire/spec-kit-aee/actions/workflows/test.yml/badge.svg)](https://github.com/electrohire/spec-kit-aee/actions/workflows/test.yml)
 [![CodeQL](https://github.com/electrohire/spec-kit-aee/actions/workflows/codeql.yml/badge.svg)](https://github.com/electrohire/spec-kit-aee/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/electrohire/spec-kit-aee/badge)](https://securityscorecards.dev/viewer/?uri=github.com/electrohire/spec-kit-aee)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15599/badge)](https://www.bestpractices.dev/en/projects/15599)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+OpenSSF Best Practices assessment: 97% (in progress); reporting-history criteria remain unclaimed.
 
 `spec-kit-aee` applies evidence-centered claim engineering to Spec-Driven Development. It turns explicit requirements, assumptions, hypotheses, decisions, and compliance claims into a challengeable claim graph; distinguishes observations from assertions; preserves contradictions; propagates weakest-link uncertainty; proposes bounded recovery work; and emits results that conform to ElectroHire's [Evaluator Contract](https://github.com/electrohire/spec-kit-evaluator).
 
