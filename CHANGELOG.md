@@ -4,6 +4,12 @@ All notable changes follow Semantic Versioning.
 
 ## Unreleased
 
+- Add an agent onboarding/router skill, document ordinary-language workflows,
+  and verify both extensions' generated agent skills in installation acceptance.
+
+- Clarify the engine distribution/import/CLI and extension IDs, assurance
+  boundaries, and this repository's current Spec Kit/AEE development setup.
+
 - `check_install.py` prints the engine and jsonschema versions the runner
   provisioned and the Evaluator version it installed, so acceptance logs
   record the resolved dependency versions (test harness only).

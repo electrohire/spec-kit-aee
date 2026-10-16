@@ -1,5 +1,9 @@
 # Contributing
 
+See [development setup](DEVELOPMENT.md) for this repository's own Spec Kit/AEE
+installation, dependency names, and the distinction between installed releases
+and the product source under test.
+
 Use issues and pull requests. Keep domain logic in
 [applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering)
 and this repository a thin adapter to
