@@ -4,6 +4,11 @@ All notable changes follow Semantic Versioning.
 
 ## Unreleased
 
+## 1.5.2 - 2026-10-16
+
+- Pin evaluator 1.1.2, including its fail-closed invalid-encoding fix, with
+  verified public archive checksum; add the live OpenSSF assessment badge.
+
 - Add reproducible input fuzzing of the runner's output-path boundary on every
   supported platform, and document the pre-release analysis requirement.
 

@@ -31,8 +31,8 @@ and macOS with Python 3.11, 3.12, and 3.13, the same targets as the engine and
 the Evaluator.
 
 For a clean install smoke, clone the Evaluator dependency at the commit pinned
-in the CI workflow (currently v1.1.1,
-`b2aa01e294b949ad18c301d41194badccb3a8196`), then run:
+in the CI workflow (currently v1.1.2,
+`40413aef4951f4eea947ed2e2291a7b123a6bac3`), then run:
 
 ```bash
 python scripts/check_install.py --evaluator-dir /path/to/spec-kit-evaluator
