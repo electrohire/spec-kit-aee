@@ -267,10 +267,23 @@ def _run_checks(
         commands += list((root / ".claude/skills").glob("speckit-aee-*/SKILL.md"))
         check(len(commands) == 10, f"expected ten rendered commands: {commands}")
         for path in commands:
+            content = path.read_text(encoding="utf-8")
+            if path.name == "SKILL.md":
+                frontmatter = yaml.safe_load(content.split("---", 2)[1])
+                check(bool(frontmatter.get("name")), f"skill name missing: {path}")
+                check(bool(frontmatter.get("description")), f"skill description missing: {path}")
             check(
-                not re.search(r"__SPECKIT_COMMAND_[A-Z_]+__", path.read_text()),
+                not re.search(r"__SPECKIT_COMMAND_[A-Z_]+__", content),
                 f"unresolved command placeholder left in {path}",
             )
+        evaluator_skills = list((root / ".claude/skills").glob("speckit-evaluator-*/SKILL.md"))
+        evaluator_commands = list((root / ".claude/commands").glob("speckit.evaluator.*.md"))
+        check(len(evaluator_skills + evaluator_commands) == 4,
+              "evaluator must render four discoverable operation skills/commands")
+        for path in evaluator_skills:
+            frontmatter = yaml.safe_load(path.read_text(encoding="utf-8").split("---", 2)[1])
+            check(bool(frontmatter.get("name")) and bool(frontmatter.get("description")),
+                  f"invalid evaluator skill metadata: {path}")
         hooks = yaml.safe_load((root / ".specify/extensions.yml").read_text())["hooks"]
         check("after_verify" in hooks, f"after_verify hook missing: {hooks}")
         shutil.copyfile(root / ".specify/extensions/aee/templates/aee-claims.json",
