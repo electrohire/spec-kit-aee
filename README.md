@@ -1,5 +1,9 @@
 # Applied Epistemic Engineering for Spec Kit
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15599/badge)](https://www.bestpractices.dev/en/projects/15599)
+
+OpenSSF assessment: 97%; reporting-history criteria remain unclaimed.
+
 [![Test](https://github.com/electrohire/spec-kit-aee/actions/workflows/test.yml/badge.svg)](https://github.com/electrohire/spec-kit-aee/actions/workflows/test.yml)
 [![CodeQL](https://github.com/electrohire/spec-kit-aee/actions/workflows/codeql.yml/badge.svg)](https://github.com/electrohire/spec-kit-aee/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/electrohire/spec-kit-aee/badge)](https://securityscorecards.dev/viewer/?uri=github.com/electrohire/spec-kit-aee)
@@ -55,8 +59,8 @@ AEE skills and four evaluator skills into the selected integration's directory
 Reload the agent session if newly installed skills are not discovered yet.
 
 The source [onboarding skill](skills/spec-kit-aee/SKILL.md) helps an agent set up
-and find those operation skills. It is an unreleased source addition; current
-released extensions already supply the operation skills. For direct agent use
+and find those operation skills. It is included from extension v1.5.2;
+operation skills are generated during installation. For direct agent use
 without Spec Kit, use the engine's
 [standalone skill and three-interface guide](https://applied-epistemic-engineering.readthedocs.io/en/latest/agent/).
 The terminal instructions below are also usable by the agent; end users do not
@@ -80,7 +84,7 @@ The engine needs at least 1.5.0, the realigned engine (Spec 004 vocabulary, meth
 Spec Kit's `requires.tools` metadata documents dependencies; it does not install them or verify their versions. The runner (`scripts/python/run_aee.py`, which every AEE command calls) therefore installs both itself:
 
 - **Engine.** If the Python running the adapter lacks an in-range `aee` command or importable `aee` package, the first AEE command creates a private environment at `.specify/extensions/aee/.runtime/venv`, installs `applied-epistemic-engineering>=1.5.0,<2` and the evaluator composer's `jsonschema>=4.0` from PyPI into it, and uses it from then on. Each later run checks that environment's `aee` version and imports its packages on its own interpreter; if that check fails (for example after damage), the environment is rebuilt from scratch. Removing the extension removes it. An engine you install yourself in the active Python takes precedence.
-- **Evaluator extension.** If `.specify/extensions/evaluator/` is absent, `assess` (or `compose`) downloads the pinned spec-kit-evaluator v1.1.1 archive, verifies its SHA-256, and installs it with `specify extension add evaluator` (the `specify` command must be on PATH).
+- **Evaluator extension.** If `.specify/extensions/evaluator/` is absent, `assess` (or `compose`) downloads the pinned spec-kit-evaluator v1.1.2 archive, verifies its SHA-256, and installs it with `specify extension add evaluator` (the `specify` command must be on PATH).
 
 Set `SPECKIT_AEE_AUTO_INSTALL=0` to disable both installs; an already provisioned runtime environment is still used. When something is missing, the runner then refuses with exit 2 and names the manual install command instead, as it does when an automatic install fails (for example, offline).
 
