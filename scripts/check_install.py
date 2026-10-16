@@ -276,14 +276,6 @@ def _run_checks(
                 not re.search(r"__SPECKIT_COMMAND_[A-Z_]+__", content),
                 f"unresolved command placeholder left in {path}",
             )
-        evaluator_skills = list((root / ".claude/skills").glob("speckit-evaluator-*/SKILL.md"))
-        evaluator_commands = list((root / ".claude/commands").glob("speckit.evaluator.*.md"))
-        check(len(evaluator_skills + evaluator_commands) == 4,
-              "evaluator must render four discoverable operation skills/commands")
-        for path in evaluator_skills:
-            frontmatter = yaml.safe_load(path.read_text(encoding="utf-8").split("---", 2)[1])
-            check(bool(frontmatter.get("name")) and bool(frontmatter.get("description")),
-                  f"invalid evaluator skill metadata: {path}")
         hooks = yaml.safe_load((root / ".specify/extensions.yml").read_text())["hooks"]
         check("after_verify" in hooks, f"after_verify hook missing: {hooks}")
         shutil.copyfile(root / ".specify/extensions/aee/templates/aee-claims.json",
@@ -297,6 +289,16 @@ def _run_checks(
                          str(root / ".specify/extensions/aee/scripts/python/run_aee.py"),
                          "assess", "--input", "claims.json", code=1)
         paths = json.loads(result)
+        # In clean installs assess provisions the evaluator. Its skills cannot
+        # exist before that first operation has installed the companion.
+        evaluator_skills = list((root / ".claude/skills").glob("speckit-evaluator-*/SKILL.md"))
+        evaluator_commands = list((root / ".claude/commands").glob("speckit.evaluator.*.md"))
+        check(len(evaluator_skills + evaluator_commands) == 4,
+              "evaluator must render four discoverable operation skills/commands")
+        for path in evaluator_skills:
+            frontmatter = yaml.safe_load(path.read_text(encoding="utf-8").split("---", 2)[1])
+            check(bool(frontmatter.get("name")) and bool(frontmatter.get("description")),
+                  f"invalid evaluator skill metadata: {path}")
         if clean_interpreter:
             # The clean interpreter has no engine and no jsonschema, so the
             # runner must have provisioned its private runtime from the
