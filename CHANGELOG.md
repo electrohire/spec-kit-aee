@@ -4,6 +4,9 @@ All notable changes follow Semantic Versioning.
 
 ## Unreleased
 
+- Add reproducible input fuzzing of the runner's output-path boundary on every
+  supported platform, and document the pre-release analysis requirement.
+
 - Add an agent onboarding/router skill, document ordinary-language workflows,
   and verify both extensions' generated agent skills in installation acceptance.
 

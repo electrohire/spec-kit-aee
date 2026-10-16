@@ -59,6 +59,11 @@ uv pip compile requirements/dev.in --universal --generate-hashes --python-versio
 
 Do not commit generated assessment data, credentials, or private evidence.
 
+The suite includes reproducible generated-path fuzzing of the runner's output
+boundary. Run it with the full suite, lint, and CodeQL before major releases.
+Preserve minimized regression cases for discovered issues. Confirmed exploitable
+static/dynamic-analysis findings must be fixed promptly under SECURITY.md.
+
 ## Metadata, release, and catalog corrections
 
 Follow Spec Kit's [extension API reference](https://github.com/github/spec-kit/blob/main/extensions/EXTENSION-API-REFERENCE.md)
