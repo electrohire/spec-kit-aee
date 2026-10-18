@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "claims": [
+    {
+      "id": "EC-001",
+      "text": "Thin preflight/execute/evidence/gate/context orchestration using engine semantics",
+      "kind": "requirement",
+      "status": "draft",
+      "stage": "created",
+      "boundary": [
+        "This repository and linked execution-control issues; no truth certification"
+      ],
+      "depends_on": [],
+      "conflicts_with": [],
+      "falsification_tests": [
+        "Adversarial/unit/integration evidence demonstrates a violation of this requirement."
+      ],
+      "source_ref": "specs/006-execution-control-loop/spec.md",
+      "uncertainty": "high",
+      "evidence": []
+    },
+    {
+      "id": "EC-002",
+      "text": "Discover Spec Kit requirement/test artifacts without inventing authority",
+      "kind": "requirement",
+      "status": "draft",
+      "stage": "created",
+      "boundary": [
+        "This repository and linked execution-control issues; no truth certification"
+      ],
+      "depends_on": [],
+      "conflicts_with": [],
+      "falsification_tests": [
+        "Adversarial/unit/integration evidence demonstrates a violation of this requirement."
+      ],
+      "source_ref": "specs/006-execution-control-loop/spec.md",
+      "uncertainty": "high",
+      "evidence": []
+    },
+    {
+      "id": "EC-003",
+      "text": "Versioned evaluator interoperability and clear unsupported-engine errors",
+      "kind": "requirement",
+      "status": "draft",
+      "stage": "created",
+      "boundary": [
+        "This repository and linked execution-control issues; no truth certification"
+      ],
+      "depends_on": [],
+      "conflicts_with": [],
+      "falsification_tests": [
+        "Adversarial/unit/integration evidence demonstrates a violation of this requirement."
+      ],
+      "source_ref": "specs/006-execution-control-loop/spec.md",
+      "uncertainty": "high",
+      "evidence": []
+    },
+    {
+      "id": "EC-004",
+      "text": "Standalone/Spec Kit operation skills for ordinary-language users",
+      "kind": "requirement",
+      "status": "draft",
+      "stage": "created",
+      "boundary": [
+        "This repository and linked execution-control issues; no truth certification"
+      ],
+      "depends_on": [],
+      "conflicts_with": [],
+      "falsification_tests": [
+        "Adversarial/unit/integration evidence demonstrates a violation of this requirement."
+      ],
+      "source_ref": "specs/006-execution-control-loop/spec.md",
+      "uncertainty": "high",
+      "evidence": []
+    }
+  ]
+}
