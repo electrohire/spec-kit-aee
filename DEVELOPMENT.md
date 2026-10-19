@@ -82,3 +82,8 @@ explains standalone Python/CLI use, the direct agent skill, and Spec Kit operati
 skills. Users can ask the agent in ordinary language; the agent handles command
 syntax and reports the actual checks and unresolved evidence. Source onboarding
 skills added under Unreleased do not silently appear in already published packages.
+
+
+## Benchmark evidence and promotion
+
+See [BENCHMARKS](BENCHMARKS.md) for established-suite results, exact-build requests and fail-closed release promotion. This does not replace the product's native install/contract/security checks or claim benchmark efficacy before measured evidence.
