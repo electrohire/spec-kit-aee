@@ -224,3 +224,5 @@ Documentation only; the runner and its dependency pins are unchanged.
 - Add the `speckit.aee.gaps` command and `after_verify` hook to generate and maintain the gap register from a verification matrix and test evidence.
 - Add dependency review, Dependabot, OpenSSF Scorecard, and hash-locked CI installs.
 - Document the private disclosure process and response timeline.
+
+- Add immutable benchmark build requests and audited exact-build release gating; preserve native CI/security controls and unpublished feature branches. No release or empirical improvement is asserted.

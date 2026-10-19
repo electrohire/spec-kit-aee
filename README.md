@@ -228,15 +228,14 @@ The command adapter rejects paths outside the project root and symlinked path co
 
 ## Benchmarks and limitations
 
-The companion [Spec Kit + AEE benchmark repository](https://github.com/electrohire/spec-kit-aee-benchmark)
-contains the protocol, runtime measurements, token accounting, repair loops, and
-preserved failures. Its [versioned results](https://github.com/electrohire/spec-kit-aee-benchmark/tree/835573aff15520a580c7c3862b3534b347101e18/reports/local)
-show a six-task local study and a staged TinyDB build. After small-task repairs,
-all three arms passed 5/6 tasks; none fully accepted a long-study hidden milestone.
-Timeouts interrupted the adapted workflows; only three combined-arm planning
-assessments completed. These results establish **no general correctness or
-cost-saving advantage**. They are a reproducible starting point for a bounded
-trial, not a claim that the complete Spec Kit + AEE workflow was validated.
+The [benchmark repository](https://github.com/electrohire/spec-kit-aee-benchmark)
+now uses established HaluEval/RAGTruth labels and FeatureBench/SWE-EVO coding
+graders. Its completed model-only detector subsets scored83.3%/80.8%; these do
+not establish an AEE/Spec Kit treatment effect or token savings. Matched treatment
+and coding economics results remain pending. Earlier convenience-task experiments
+and failed runs are preserved as historical evidence, not actively maintained
+benchmark suites. See [BENCHMARKS](BENCHMARKS.md) for the harness I/O diagram,
+interpretation limits, rebuild requests and exact-build release gating.
 
 AEE scores declared structured evidence; it does not independently run a load test,
 fetch every evidence reference, or prove an assertion true. Markdown extraction
@@ -266,3 +265,8 @@ for released versus pending changes.
 ## License
 
 MIT © 2026 ElectroHire Inc.
+
+
+## Benchmark evidence and releases
+
+[Established benchmarks and release gates](BENCHMARKS.md) explain the upstream suites, separate reliability/coding/economics findings and exact-build promotion. Current completed detector results are model-only; no AEE treatment benefit or token payback is established yet. Rebuilds queue content-bound requests; releases remain blocked without complete audited matched evidence.
