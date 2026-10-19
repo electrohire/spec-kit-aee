@@ -12,9 +12,10 @@ documents rendered by Spec Kit from this repository's `commands/` files.
    project, inspect `.specify/init-options.json` and the extension registry before
    changing anything. Preserve the user's constitution and custom artifacts.
 2. If setup is requested and missing, initialize Spec Kit for the user's agent,
-   then run `specify extension add aee`. If an older installation refuses,
-   consult [troubleshooting](https://github.com/electrohire/spec-kit-aee/blob/main/DEVELOPMENT.md#troubleshooting-older-installations)
-   before selecting a reviewed fallback.
+   then follow the [one-time publisher catalog setup](https://github.com/electrohire/spec-kit-aee#installation)
+   and run `specify extension add aee`. Current Specify releases keep the default
+   community catalog discovery-only; an upgrade alone does not enable installation
+   by name. Inspect existing catalog configuration before registering a source.
    Do not silently change catalog trust or use `--force` over local work.
 3. AEE provisions its Python engine (`applied-epistemic-engineering`, import/CLI
    `aee`), `jsonschema`, and evaluator companion (extension ID `evaluator`) on

@@ -107,6 +107,12 @@ def main() -> None:
         "(e.g. an immutable GitHub commit or tag archive) to specify",
     )
     parser.add_argument(
+        "--catalog-url",
+        default=None,
+        help="register this reviewed publisher catalog, then install with "
+        "'specify extension add aee' (no --from)",
+    )
+    parser.add_argument(
         "--expect-aee-version",
         default=None,
         help="fail unless specify reports exactly this installed AEE "
@@ -133,25 +139,26 @@ def main() -> None:
     server: http.server.ThreadingHTTPServer | None = None
     archive_url: str | None = None
     check(
-        not (args.from_archive and args.from_url),
-        "--from-archive and --from-url are mutually exclusive",
+        sum(bool(value) for value in (args.from_archive, args.from_url, args.catalog_url)) <= 1,
+        "--from-archive, --from-url and --catalog-url are mutually exclusive",
     )
     if args.from_url is not None:
         archive_url = args.from_url
     elif args.from_archive is not None:
         archive = args.from_archive.resolve(strict=True)
         server, archive_url = _serve_archive(archive)
-    else:
+    elif args.catalog_url is None:
         aee_source = args.aee_dir.resolve(strict=True)
     env = {**os.environ, "PYTHONUTF8": "1", "NO_COLOR": "1"}
     try:
         _run_checks(specify, evaluator, aee_source, archive_url, env,
-                    args.clean_interpreter, args.expect_aee_version)
+                    args.clean_interpreter, args.expect_aee_version, args.catalog_url)
     finally:
         if server is not None:
             server.shutdown()
     origin = (
-        args.from_url if args.from_url
+        args.catalog_url if args.catalog_url
+        else args.from_url if args.from_url
         else "release archive" if archive is not None
         else "local directory"
     )
@@ -209,6 +216,7 @@ def _run_checks(
     env: dict[str, str],
     clean_interpreter: bool = False,
     expect_aee_version: str | None = None,
+    catalog_url: str | None = None,
 ) -> None:
     with tempfile.TemporaryDirectory(prefix="aee-install-") as directory,             tempfile.TemporaryDirectory(prefix="aee-clean-python-") as tools:
         root = Path(directory)
@@ -236,7 +244,11 @@ def _run_checks(
                 "--ignore-agent-tools", "--non-interactive")
         if evaluator is not None:
             command(specify, "extension", "add", "--dev", str(evaluator))
-        if archive_url is not None:
+        if catalog_url is not None:
+            command(specify, "extension", "catalog", "add", catalog_url,
+                    "--name", "electrohire", "--install-allowed")
+            command(specify, "extension", "add", "aee")
+        elif archive_url is not None:
             command(specify, "extension", "add", "aee", "--from", archive_url)
         else:
             check(aee_source is not None, "an aee source is required")
