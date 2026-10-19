@@ -49,6 +49,33 @@ prover or independent certification authority. See the engine's
 
 ## Installation
 
+In an initialized Spec Kit project, install AEE by name:
+
+```bash
+specify extension add aee
+```
+
+**First-time catalog setup:** Spec Kit's default community catalog is
+discovery-only, including in Specify 1.2.2. Before the command above, review the
+[ElectroHire catalog](catalog.json), which contains only the published AEE and
+Evaluator releases, and register it once per project:
+
+```bash
+specify extension catalog add https://raw.githubusercontent.com/electrohire/spec-kit-aee/main/catalog.json --name electrohire --install-allowed
+```
+
+This explicitly selects ElectroHire's catalog as an installation source; it does
+not enable installation from the full community catalog. An existing organization
+catalog can instead include the AEE entry. The project catalog configuration
+overrides the default catalog stack; teams with custom catalogs should add the
+entry to their existing configuration. Then `specify extension add aee` needs no
+`--from` URL. Python >=3.11 and Specify must already be installed.
+
+The first AEE operation installs the compatible engine and Python dependencies;
+the first `assess` or `compose` also installs the Evaluator companion. No separate
+pip or evaluator command is needed. See [installation verification](docs/installation.md)
+for the tested versions and exact dependency timing.
+
 ### Let your agent handle the workflow
 
 Ask your agent: “Set up AEE for this Spec Kit project, assess the spec's explicit
@@ -91,15 +118,13 @@ Set `SPECKIT_AEE_AUTO_INSTALL=0` to disable both installs; an already provisione
 For a new project, install Spec Kit using its [official installation
 instructions](https://github.com/github/spec-kit#-get-started), then run
 `specify init my-project` and `cd my-project`. Choose your agent during setup.
-In a new or existing project, install the adapter; its dependencies follow
-automatically:
+After the one-time catalog setup above, install the adapter in the project;
+its runtime dependencies follow automatically on first use:
 
 ```bash
 specify extension add aee
 specify extension list
 ```
-
-
 
 The first AEE command provisions the engine; assess/compose installs the
 evaluator companion when missing. Installation needs network access once.

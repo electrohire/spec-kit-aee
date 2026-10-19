@@ -4,6 +4,10 @@ All notable changes follow Semantic Versioning.
 
 ## Unreleased
 
+- Document installation by name after one-time publisher catalog registration;
+  clarify that the current community catalog remains discovery-only and that
+  AEE provisions runtime dependencies on first use.
+
 ## 1.5.2 - 2026-10-16
 
 - Pin evaluator 1.1.2, including its fail-closed invalid-encoding fix, with
