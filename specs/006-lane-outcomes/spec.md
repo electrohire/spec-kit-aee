@@ -4,10 +4,19 @@
 
 **Created**: 2026-10-20
 
-**Status**: In progress on this branch. Claims are assessed before
-implementation and again after; both records are saved beside this
-spec (`assessment.json` / `assessment-after-implement.json`, with the
-matching claim bundles). Not merged — the coordinator merges.
+**Status**: Implemented on this branch (2026-10-20). Claims:
+LO-006-01..05 0.808 → 0.846 (released engine 1.5.3, methodology
+2.0, before → after implementation); bundle outcome `iterate` at
+both assessments — the claims sit at stage `created`, and the
+1.5.3 engine's lane-1 outcome still copies the headline, recorded
+as-is. The hermetic suite for this spec (tests/test_lane_outcomes.py,
+10 tests) passes, as do the updated floor, vocabulary, evaluator,
+and manifest tests. Still open at the time of writing, both waiting
+on the companion engine work: the full suite's real-engine tests
+and the `check_install.py` end-to-end run need engine 1.6.0 (the
+runner now refuses the 1.5.3 engine in this environment, by design),
+and `requirements/dev.txt` is regenerated once engine 1.6.0 is
+published. Not merged — the coordinator merges.
 
 **Input**: Engine Spec 006 (companion work in the engine repository):
 the engine used to report one blended headline outcome, and lane 1
