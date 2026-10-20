@@ -10,7 +10,7 @@ engine 1.5.3, methodology 2.0; after assessed with engine 1.6.0
 from the companion engine branch, methodology 2.1); bundle outcome
 `iterate` at both assessments — the claims sit at stage `created`,
 recorded as-is. Full suite with engine 1.6.0: 168 passed,
-2 skipped (main baseline, engine 1.5.3: 158 passed, 3 skipped).
+2 skipped (main baseline, engine 1.5.3: 157 passed, 2 skipped).
 Verified end to end against the real engine: the runner's assess
 on a lane-1-pass bundle displays `headline: iterate — lane 1:
 pass, lane 2: open (1 draft claim(s); 1 claim(s) below stage
