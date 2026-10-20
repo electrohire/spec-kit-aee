@@ -59,7 +59,25 @@ Version contract
 At startup the runner runs ``aee --version`` and refuses (exit 2) when
 the installed engine is outside ``REQUIRED_AEE_VERSION``, naming both
 the found and required versions. The range mirrors ``extension.yml``
-(``requires.tools`` entry ``aee``); keep the two in sync.
+(``requires.tools`` entry ``aee``); keep the two in sync. The floor is
+engine 1.6.0 (Spec 006): the first engine whose lane-1 outcome is
+computed from lane-1 facts alone, instead of copying the headline,
+and whose gate offers ``--require-lane1-pass``.
+
+Lane pair (Spec 006)
+--------------------
+``assess`` surfaces the two lanes as a pair alongside the headline,
+in ``lane_pair`` (also inside ``verdict_display``): the headline
+outcome, the lane-1 outcome copied from the assessment's own lane
+record, a plain lane-2 state (``open``/``complete``) with the lane-2
+facts behind it, and a one-line ``display`` such as ``headline:
+iterate — lane 1: pass, lane 2: open (4 draft claim(s); 4 claim(s)
+below stage 'explained')``. Lane 1 is what the machine checks proved;
+lane 2 is where human review and acceptance stand; the headline
+stays cautious until both are done. ``gate --require-lane1-pass``
+forwards the engine's lane-1 requirement unchanged and preserves its
+exit codes exactly: 0 lane-1 pass, 1 lane-1 iterate family, 2 block
+or integrity refusal.
 
 Evaluator extension (required companion, Spec 005)
 --------------------------------------------------
@@ -178,8 +196,8 @@ from pathlib import Path
 DEFAULT_TIMEOUT_SECONDS = 600.0
 
 # Mirrors extension.yml requires.tools[aee]. Keep in sync.
-REQUIRED_AEE_VERSION = ">=1.5.0,<2"
-_AEE_VERSION_MIN = (1, 5, 0)
+REQUIRED_AEE_VERSION = ">=1.6.0,<2"
+_AEE_VERSION_MIN = (1, 6, 0)
 _AEE_VERSION_MAX = (2, 0, 0)  # exclusive
 _VERSION_PATTERN = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 ENGINE_REQUIREMENT = f"applied-epistemic-engineering{REQUIRED_AEE_VERSION}"
@@ -258,6 +276,15 @@ def parser() -> argparse.ArgumentParser:
         metavar="PHASE",
         help="gate the assessment named by the latest-<phase> pointer "
         "maintained by assess, instead of an explicit --input path",
+    )
+    gate.add_argument(
+        "--require-lane1-pass",
+        action="store_true",
+        help="forward the engine's lane-1 requirement: exit 0 when "
+        "lane 1 (machine verification) passes on its own facts, 1 "
+        "when lane 1 is in the iterate family, and 2 when the "
+        "engine blocks or refuses on integrity grounds. Without "
+        "this flag the gate applies the headline outcome as before.",
     )
 
     gaps = sub.add_parser("gaps")
@@ -1039,7 +1066,15 @@ def _gate(executable: str, root: Path, args: argparse.Namespace) -> int:
         value = _resolve_latest(root, args.latest)
     else:
         value = _safe_existing(root, args.input)
-    return _run_engine([executable, "gate", "--input", str(value)], args.timeout).returncode
+    command = [executable, "gate", "--input", str(value)]
+    if getattr(args, "require_lane1_pass", False):
+        # Forwarded unchanged (Spec 006 LO-02): the engine's exit
+        # code is the verdict — 0 lane-1 pass, 1 lane-1 iterate
+        # family, 2 block or integrity refusal. The flag is never
+        # dropped silently: an engine that does not offer it errors
+        # (exit 2) instead of running a plain headline gate.
+        command.append("--require-lane1-pass")
+    return _run_engine(command, args.timeout).returncode
 
 
 def _resolve_latest(root: Path, phase_arg: str) -> Path:
@@ -1322,6 +1357,9 @@ def _assess(executable: str, root: Path, args: argparse.Namespace) -> int:
             {
                 "assessment": assessment_rel,
                 "verdict_display": verdict_display,
+                "lane_pair": (
+                    verdict_display.get("lane_pair") if verdict_display else None
+                ),
                 "evaluator_result": (
                     None
                     if timed_out
@@ -1374,7 +1412,109 @@ def _verdict_display(assessment_path: Path) -> dict | None:
             "lane_1": lanes.get("lane_1"),
             "lane_2": lanes.get("lane_2"),
         },
+        "lane_pair": _lane_pair(value),
         "not_understood": value.get("not_understood"),
+    }
+
+
+def _lane_fact(lane: dict, name: str) -> object:
+    """One lane fact, read from the lane record or its bundle.
+
+    Engine assessments carry the facts at the top of each lane
+    record; some shapes nest them under ``bundle``. Both are the
+    engine's own record — the runner only reads them.
+    """
+    if name in lane:
+        return lane[name]
+    bundle = lane.get("bundle")
+    if isinstance(bundle, dict):
+        return bundle.get(name)
+    return None
+
+
+def _lane_count(lane: dict, name: str) -> int | None:
+    value = _lane_fact(lane, name)
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _lane_pair(value: dict) -> dict | None:
+    """The lane pair, shown alongside the headline (Spec 006 LO-01).
+
+    Lane 1 is what the machine checks proved; lane 2 is where human
+    review and acceptance stand; the headline stays cautious until
+    both are done. Until the engine fix (1.6.0), lane 1 simply copied
+    the headline, so a lane-1 pass hidden under draft claims or
+    not-yet-explained claims could never be seen. The pair makes the
+    two readings visible at once, in one line:
+
+        headline: iterate — lane 1: pass, lane 2: open
+        (4 draft claim(s); 4 claim(s) below stage 'explained')
+
+    The lane-1 outcome and every lane-2 reason are copied from the
+    assessment's own lane records and reported statuses; the only
+    judgement the runner adds is the plain word for lane 2's state —
+    ``open`` when the record still shows lane-2 work, ``complete``
+    when it shows none. A record with no usable lane pair yields
+    None, never invented values.
+    """
+    lanes = value.get("lanes")
+    if not isinstance(lanes, dict):
+        return None
+    lane_1 = lanes.get("lane_1")
+    lane_2 = lanes.get("lane_2")
+    if not isinstance(lane_1, dict) or not isinstance(lane_2, dict):
+        return None
+    lane_1_outcome = _lane_fact(lane_1, "outcome")
+    if not isinstance(lane_1_outcome, str) or not lane_1_outcome:
+        return None
+    reasons: list[str] = []
+    reported = value.get("reported_statuses")
+    if isinstance(reported, dict):
+        drafts = sum(1 for status in reported.values() if status == "draft")
+        if drafts:
+            reasons.append(f"{drafts} draft claim(s)")
+    below_explained = _lane_count(lane_2, "claims_below_explained")
+    if below_explained:
+        reasons.append(f"{below_explained} claim(s) below stage 'explained'")
+    else:
+        # Below-explained already covers the earlier stages; only
+        # name the later lane-2 gaps when they are the remaining work,
+        # so the reasons do not say the same thing twice.
+        stage_counts = _lane_fact(lane_2, "stage_counts")
+        if isinstance(stage_counts, dict):
+            counts = [
+                count
+                for count in stage_counts.values()
+                if isinstance(count, int) and not isinstance(count, bool)
+            ]
+            if len(counts) == len(stage_counts):
+                total = sum(counts)
+                settled = stage_counts.get("accepted", 0) + stage_counts.get(
+                    "digested", 0
+                )
+                if total and settled < total:
+                    reasons.append(
+                        f"{total - settled} claim(s) not yet accepted or digested"
+                    )
+        exposition_missing = _lane_count(lane_2, "exposition_missing_claims")
+        if exposition_missing:
+            reasons.append(f"{exposition_missing} claim(s) without exposition")
+    verified_unexplained = _lane_count(lane_2, "verified_unexplained_claims")
+    if verified_unexplained:
+        reasons.append(
+            f"{verified_unexplained} verified but unexplained claim(s)"
+        )
+    state = "open" if reasons else "complete"
+    headline = value.get("outcome")
+    display = f"headline: {headline} — lane 1: {lane_1_outcome}, lane 2: {state}"
+    if reasons:
+        display += f" ({'; '.join(reasons)})"
+    return {
+        "headline_outcome": headline,
+        "lane_1_outcome": lane_1_outcome,
+        "lane_2_state": state,
+        "lane_2_reasons": reasons,
+        "display": display,
     }
 
 

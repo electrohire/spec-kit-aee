@@ -102,15 +102,15 @@ commands belong in your coding agent's chat, not in PowerShell or Bash.
 | --- | --- | --- |
 | Spec Kit | `specify-cli>=1.0.0` | [github/spec-kit](https://github.com/github/spec-kit): project and command installation |
 | Python | `python>=3.11` | Runs the adapter and engine |
-| AEE engine | `applied-epistemic-engineering>=1.5.0,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps; installed automatically by the runner when missing |
+| AEE engine | `applied-epistemic-engineering>=1.6.0,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps; installed automatically by the runner when missing |
 | Evaluator extension (required companion) | extension ID `evaluator`, version `>=1.0.0,<2` | [electrohire/spec-kit-evaluator](https://github.com/electrohire/spec-kit-evaluator): the common evaluator this adapter's results are composed through — composition, reporting, and routing over the engine-produced result; installed automatically by `assess` when missing |
 | This adapter | extension ID `aee` | [electrohire/spec-kit-aee](https://github.com/electrohire/spec-kit-aee): ten agent commands and optional lifecycle hooks |
 
-The engine needs at least 1.5.0, the realigned engine (Spec 004 vocabulary, methodology 2.0), and the runner enforces the range itself by checking `aee --version` against `>=1.5.0,<2`. The Evaluator Contract result is produced by the engine itself, and the evaluator extension is a **required companion** to this adapter: AEE is one evaluator among many by design, and its results are composed through that common evaluator so every evaluator's output is handled the same way. The evaluator extension is a Spec Kit extension, **not** a PyPI package or shell executable.
+The engine needs at least 1.6.0: the first engine whose lane-1 outcome is worked out from lane-1 facts alone instead of copying the headline (methodology 2.1), and whose gate can require a lane-1 pass on its own. The runner enforces the range itself by checking `aee --version` against `>=1.6.0,<2`. The Evaluator Contract result is produced by the engine itself, and the evaluator extension is a **required companion** to this adapter: AEE is one evaluator among many by design, and its results are composed through that common evaluator so every evaluator's output is handled the same way. The evaluator extension is a Spec Kit extension, **not** a PyPI package or shell executable.
 
 Spec Kit's `requires.tools` metadata documents dependencies; it does not install them or verify their versions. The runner (`scripts/python/run_aee.py`, which every AEE command calls) therefore installs both itself:
 
-- **Engine.** If the Python running the adapter lacks an in-range `aee` command or importable `aee` package, the first AEE command creates a private environment at `.specify/extensions/aee/.runtime/venv`, installs `applied-epistemic-engineering>=1.5.0,<2` and the evaluator composer's `jsonschema>=4.0` from PyPI into it, and uses it from then on. Each later run checks that environment's `aee` version and imports its packages on its own interpreter; if that check fails (for example after damage), the environment is rebuilt from scratch. Removing the extension removes it. An engine you install yourself in the active Python takes precedence.
+- **Engine.** If the Python running the adapter lacks an in-range `aee` command or importable `aee` package, the first AEE command creates a private environment at `.specify/extensions/aee/.runtime/venv`, installs `applied-epistemic-engineering>=1.6.0,<2` and the evaluator composer's `jsonschema>=4.0` from PyPI into it, and uses it from then on. Each later run checks that environment's `aee` version and imports its packages on its own interpreter; if that check fails (for example after damage), the environment is rebuilt from scratch. Removing the extension removes it. An engine you install yourself in the active Python takes precedence.
 - **Evaluator extension.** If `.specify/extensions/evaluator/` is absent, `assess` (or `compose`) downloads the pinned spec-kit-evaluator v1.1.2 archive, verifies its SHA-256, and installs it with `specify extension add evaluator` (the `specify` command must be on PATH).
 
 Set `SPECKIT_AEE_AUTO_INSTALL=0` to disable both installs; an already provisioned runtime environment is still used. When something is missing, the runner then refuses with exit 2 and names the manual install command instead, as it does when an automatic install fails (for example, offline).
@@ -177,6 +177,20 @@ Then run:
 
 The assessment is stored under `.specify/extensions/aee/assessments/`; the shared result is stored under `.specify/extensions/evaluator/results/`. A claim without inspectable evidence remains unsupported even when generated prose says it passed.
 
+## Reading the result: two lanes, one headline
+
+Every assessment reports three readings together, and the runner's `assess` JSON carries them as a `lane_pair` with a one-line `display`:
+
+```text
+headline: iterate — lane 1: pass, lane 2: open (4 draft claim(s); 4 claim(s) below stage 'explained')
+```
+
+- **Lane 1 is what the machine checks proved** — scores against the threshold, and any failures the checks found.
+- **Lane 2 is where human review and acceptance stand** — draft claims, claims not yet explained or accepted, and similar review state.
+- **The headline stays cautious until both are done.** A lane-1 `pass` under an `iterate` headline is not a contradiction: it means the machine checks passed and people are still reviewing. Before engine 1.6.0, lane 1 simply copied the headline, so that distinction could not be seen at all.
+
+A CI step that needs the machine checks to have passed on their own — even while review is still open — can gate on lane 1 alone: `run_aee.py gate --input <assessment> --require-lane1-pass` exits 0 when lane 1 passes, 1 when lane 1 needs recovery work, and 2 when the engine blocks or refuses on integrity grounds (for example, a recorded lane-1 outcome the recorded facts do not support). Without the option, `gate` applies the headline outcome as before.
+
 ## Runner exit codes
 
 The adapter (`run_aee.py`) uses one code for every error so an exit code alone never mistakes a failure for a scored verdict:
@@ -185,7 +199,7 @@ The adapter (`run_aee.py`) uses one code for every error so an exit code alone n
 | --- | --- |
 | 0 | Engine outcome `pass`/`warn`, or a successful non-scored operation |
 | 1 | Engine scored outcome `iterate`, `clarify`, or `gather_evidence` — a verdict, not an error |
-| 2 | An error: runner refusals (missing/out-of-root/symlinked paths, invalid phase, missing `aee`, or an `aee` version outside `>=1.5.0,<2`) and engine-reported input/usage errors. (`gate` also returns 2 for an engine `block` verdict.) |
+| 2 | An error: runner refusals (missing/out-of-root/symlinked paths, invalid phase, missing `aee`, or an `aee` version outside `>=1.6.0,<2`) and engine-reported input/usage errors. (`gate` also returns 2 for an engine `block` verdict.) |
 
 Runner refusals print `refused: ...` to stderr and never a traceback. JSON summaries always carry `aee_exit_code` and `ok`, and name an output path only when that file was actually written during the run (otherwise the field is `null`).
 
@@ -200,7 +214,7 @@ Assessments produced through the runner carry `metadata.extension_version` (the 
 | `speckit.aee.challenge` | Focus on breakpoints and recovery work |
 | `speckit.aee.trace` | Render dependencies and review provenance |
 | `speckit.aee.verify` | Verify ledger integrity |
-| `speckit.aee.gate` | Return CI-friendly exit status from an assessment |
+| `speckit.aee.gate` | Return CI-friendly exit status from an assessment; with `--require-lane1-pass`, require lane 1 (machine verification) to pass on its own |
 | `speckit.aee.review` | Diff two assessments into a materiality-filtered review queue |
 | `speckit.aee.gaps` | Generate or update the gap register from a verification matrix and test evidence |
 | `speckit.aee.route-evidence` | Route oversized logs and sources into raw evidence slices for AEE gates |
@@ -246,7 +260,7 @@ structured evidence. Review findings and references before acting on an outcome.
 
 | Symptom | Next step |
 | --- | --- |
-| `aee` is missing or out of range | Check that automatic installation is enabled and has network access (the refusal names the failure), or install engine `>=1.5.0,<2` into the Python that runs the adapter and confirm with `aee --version`. |
+| `aee` is missing or out of range | Check that automatic installation is enabled and has network access (the refusal names the failure), or install engine `>=1.6.0,<2` into the Python that runs the adapter and confirm with `aee --version`. |
 | Evaluator commands are missing | Run `assess` once with `specify` on PATH, or install `evaluator` from the explicit archive URL. Then run `specify extension list` and restart the coding agent if needed. |
 | No project / unknown slash command | Run `specify init` first and use the command spelling rendered for your selected agent. |
 | Exit 1 from an assessment | Read the result: `iterate`, `clarify`, and `gather_evidence` are expected recovery outcomes, not installation errors. |

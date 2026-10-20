@@ -34,7 +34,7 @@ installing AEE does not silently change project trust settings.
 | Step | Installed component |
 | --- | --- |
 | `specify extension add aee` | AEE adapter, templates, hooks, and agent commands/skills |
-| First AEE operation | Compatible `applied-epistemic-engineering>=1.5.0,<2` and `jsonschema>=4.0` in a private runtime when needed |
+| First AEE operation | Compatible `applied-epistemic-engineering>=1.6.0,<2` and `jsonschema>=4.0` in a private runtime when needed |
 | First `assess` or `compose` | Evaluator 1.1.2, downloaded and SHA-256 verified by the runner when absent |
 
 The extension manager's `requires.tools` metadata does not install Python

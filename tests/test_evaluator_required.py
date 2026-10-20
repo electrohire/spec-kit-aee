@@ -33,7 +33,7 @@ from pathlib import Path
 
 args = sys.argv[1:]
 if args == ["--version"]:
-    print(os.environ.get("AEE_STUB_VERSION_TEXT", "aee 1.5.0"))
+    print(os.environ.get("AEE_STUB_VERSION_TEXT", "aee 1.6.0"))
     sys.exit(0)
 command = args[0] if args else ""
 
@@ -48,7 +48,7 @@ if command == "assess":
         "phase": flag("--phase") or "after_plan",
         "outcome": "iterate",
         "claims": [],
-        "metadata": {"engine_version": "1.5.0"},
+        "metadata": {"engine_version": "1.6.0"},
     }))
     Path(flag("--evaluator-output")).write_text(json.dumps({"outcome": "iterate"}))
     sys.exit(1)
@@ -75,7 +75,7 @@ def _stub_env(tmp_path: Path) -> dict:
     stub.chmod(stub.stat().st_mode | stat.S_IEXEC)
     env = dict(os.environ)
     env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
-    env["AEE_STUB_VERSION_TEXT"] = "aee 1.5.0"
+    env["AEE_STUB_VERSION_TEXT"] = "aee 1.6.0"
     return env
 
 
@@ -151,7 +151,7 @@ def test_other_commands_are_not_blocked_without_evaluator(
 
 def test_manifest_declares_evaluator_required() -> None:
     manifest = yaml.safe_load((ROOT / "extension.yml").read_text(encoding="utf-8"))
-    assert manifest["extension"]["version"] == "1.5.2"
+    assert manifest["extension"]["version"] == "1.6.0"
     tools = {tool["name"]: tool for tool in manifest["requires"]["tools"]}
     evaluator = tools["spec-kit-evaluator"]
     assert evaluator["required"] is True

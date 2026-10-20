@@ -44,7 +44,7 @@ import sys
 def main():
     args = sys.argv[1:]
     if args == ["--version"]:
-        print("aee 1.5.0")
+        print("aee 1.6.0")
     return 0
 '''
 
@@ -93,9 +93,9 @@ def _build_runtime_wheels(directory: Path) -> None:
     _build_wheel(
         directory,
         "applied-epistemic-engineering",
-        "1.5.0",
+        "1.6.0",
         {
-            "aee/__init__.py": b'__version__ = "1.5.0"\n',
+            "aee/__init__.py": b'__version__ = "1.6.0"\n',
             "aee/cli.py": _FAKE_ENGINE_CLI.encode(),
             "aee/ledger.py": b"class HashChainLedger:\n    pass\n",
         },
@@ -153,7 +153,7 @@ def test_runtime_is_provisioned_then_reused(tmp_path: Path) -> None:
 
     first = _run(runner, root, env, "verify", "--ledger", "ledger.jsonl")
     assert first.returncode == 0, first.stdout + first.stderr
-    assert "note: installing applied-epistemic-engineering>=1.5.0,<2" in first.stderr
+    assert "note: installing applied-epistemic-engineering>=1.6.0,<2" in first.stderr
     runtime = runner.parents[2] / ".runtime"
     venv_bin = runtime / "venv" / ("Scripts" if os.name == "nt" else "bin")
     assert shutil.which("aee", path=str(venv_bin)) is not None
@@ -196,7 +196,7 @@ def test_damaged_runtime_is_rebuilt(tmp_path: Path) -> None:
     cli = shutil.which("aee", path=str(venv / ("Scripts" if os.name == "nt" else "bin")))
     assert cli is not None
     version = subprocess.run([cli, "--version"], capture_output=True, text=True, check=False)
-    assert version.stdout.strip() == "aee 1.5.0"
+    assert version.stdout.strip() == "aee 1.6.0"
 
     repaired = _run(runner, root, env, "verify", "--ledger", "ledger.jsonl")
     assert repaired.returncode == 0, repaired.stdout + repaired.stderr
@@ -221,7 +221,7 @@ def test_runtime_install_failure_is_a_clean_refusal(tmp_path: Path) -> None:
     completed = _run(runner, _project(tmp_path), env, "verify", "--ledger", "ledger.jsonl")
     assert completed.returncode == 2, completed.stdout + completed.stderr
     assert "Traceback" not in completed.stderr
-    assert "refused: installing applied-epistemic-engineering>=1.5.0,<2 failed" in (
+    assert "refused: installing applied-epistemic-engineering>=1.6.0,<2 failed" in (
         completed.stderr
     )
     # The refusal names the manual alternative and the opt-out.
@@ -386,7 +386,7 @@ from pathlib import Path
 
 args = sys.argv[1:]
 if args == ["--version"]:
-    print("aee 1.5.0")
+    print("aee 1.6.0")
     sys.exit(0)
 if args[:1] == ["assess"] and "--help" not in args:
     flag = lambda name: args[args.index(name) + 1]
