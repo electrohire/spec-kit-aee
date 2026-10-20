@@ -5,18 +5,23 @@
 **Created**: 2026-10-20
 
 **Status**: Implemented on this branch (2026-10-20). Claims:
-LO-006-01..05 0.808 → 0.846 (released engine 1.5.3, methodology
-2.0, before → after implementation); bundle outcome `iterate` at
-both assessments — the claims sit at stage `created`, and the
-1.5.3 engine's lane-1 outcome still copies the headline, recorded
-as-is. The hermetic suite for this spec (tests/test_lane_outcomes.py,
-10 tests) passes, as do the updated floor, vocabulary, evaluator,
-and manifest tests. Still open at the time of writing, both waiting
-on the companion engine work: the full suite's real-engine tests
-and the `check_install.py` end-to-end run need engine 1.6.0 (the
-runner now refuses the 1.5.3 engine in this environment, by design),
-and `requirements/dev.txt` is regenerated once engine 1.6.0 is
-published. Not merged — the coordinator merges.
+LO-006-01..05 0.808 → 0.846 (before assessed with the released
+engine 1.5.3, methodology 2.0; after assessed with engine 1.6.0
+from the companion engine branch, methodology 2.1); bundle outcome
+`iterate` at both assessments — the claims sit at stage `created`,
+recorded as-is. Full suite with engine 1.6.0: 168 passed,
+2 skipped (main baseline, engine 1.5.3: 158 passed, 3 skipped).
+Verified end to end against the real engine: the runner's assess
+on a lane-1-pass bundle displays `headline: iterate — lane 1:
+pass, lane 2: open (1 draft claim(s); 1 claim(s) below stage
+'explained')`; the runner's plain gate on that assessment exits 1
+while `gate --require-lane1-pass` exits 0, and a forged lane-1
+outcome exits 2; `scripts/check_install.py` passes against the
+real spec-kit-evaluator v1.1.2 checkout and prints the installed
+assess's lane pair. One item remains open, waiting on the engine
+release: `requirements/dev.txt` is regenerated once engine 1.6.0
+is published (its `dev.in` pin already reads `==1.6.0`).
+Not merged — the coordinator merges.
 
 **Input**: Engine Spec 006 (companion work in the engine repository):
 the engine used to report one blended headline outcome, and lane 1

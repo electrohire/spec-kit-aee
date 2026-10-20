@@ -1,11 +1,11 @@
 {
   "schema_version": "1.0",
-  "methodology_version": "2.0",
+  "methodology_version": "2.1",
   "project": "spec-kit-aee",
   "phase": "after_specify",
   "outcome": "iterate",
   "summary": "Assessed 5 claim(s); found 25 failure mode(s); 0 claim(s) below the 0.70 confidence threshold. Shared evidence: 3 supporting source(s) shared across 5 of 5 claim(s); the same evidence set supports multiple claims (FR-2.8, reporting only, no outcome effect in this phase). Stage cap: 5 claim(s) below stage 'explained'; the outcome cannot be 'pass' (Spec 004 R1.4). Stage caps applied: 5 claim(s) reported below their author-declared status or in qualified form (Spec 004 R1.3). Not understood: 10 residual unknown(s) are recorded on this assessment (Spec 004 R5.2). Lane 1 (machine verification): outcome iterate; 5 claim(s) at or above the 0.70 threshold, 0 below. Lane 2 (human acceptance): stages by effective stage: created 5. Lane-2 lag: 5 claim(s) below explained; 5 stage-capped.",
-  "created_at": "2026-10-20T20:29:54.207183Z",
+  "created_at": "2026-10-20T20:45:10.696705Z",
   "claims": [
     {
       "id": "LO-006-01",
@@ -41,11 +41,11 @@
           "content_hash": null
         },
         {
-          "ref": "tests/test_lane_outcomes.py::test_assess_shows_pair_when_lane1_passes_and_headline_iterates; scripts/python/run_aee.py _lane_pair",
+          "ref": "tests/test_lane_outcomes.py; scripts/python/run_aee.py _lane_pair/_gate; scripts/check_install.py _run_checks (Spec 006 block); engine 1.6.0 end-to-end run 2026-10-20",
           "kind": "observed",
           "direction": "supports",
           "source_quality": "artifact",
-          "description": "Shipped pair display, verified by the hermetic stub suite: assess on an assessment whose lane 1 passes while the headline is iterate returns lane_pair {headline_outcome: iterate, lane_1_outcome: pass, lane_2_state: open, lane_2_reasons: [1 draft claim(s); 1 claim(s) below stage 'explained']} and display 'headline: iterate - lane 1: pass, lane 2: open (1 draft claim(s); 1 claim(s) below stage 'explained')', identical inside verdict_display; an assessment with no lanes yields lane_pair null (test_assess_without_lanes_yields_null_pair), and a settled lane 2 reads complete (test_lane_pair_complete_when_lane2_has_no_open_work).",
+          "description": "Shipped pair display, verified two ways. Hermetic stub suite: assess on an assessment whose lane 1 passes while the headline is iterate returns lane_pair {headline_outcome: iterate, lane_1_outcome: pass, lane_2_state: open, lane_2_reasons: [1 draft claim(s); 1 claim(s) below stage 'explained']} and the matching one-line display, identical inside verdict_display; no lanes yields lane_pair null; a settled lane 2 reads complete. Real engine (1.6.0 from the companion branch) through the runner on a one-claim bundle: lane_pair display 'headline: iterate - lane 1: pass, lane 2: open (1 draft claim(s); 1 claim(s) below stage 'explained')' with methodology 2.1, exactly the case the old blended headline hid.",
           "source_id": "lo-after-inspection-2026-10-20",
           "independent_of": [],
           "observed_at": null,
@@ -79,7 +79,7 @@
           "id": "AEE-LO-006-01-INDEPENDENCE-UNMODELED",
           "claim_id": "LO-006-01",
           "challenge": "Shared-evidence independence challenge",
-          "breakpoint": "Supporting evidence 'lo-after-inspection-2026-10-20' (ref(s): extension.yml; CHANGELOG.md; tests/test_evaluator_required.py::test_manifest_declares_evaluator_required; tests/test_draft_claims.py, scripts/check_install.py _run_checks lane-pair block (Spec 006 LO-05), scripts/python/run_aee.py REQUIRED_AEE_VERSION; extension.yml; tests/test_lane_outcomes.py::test_engine_1_5_x_is_refused_by_the_new_floor; tests/test_p5_vocabulary.py::test_floor_constants_agree_across_the_three_places, tests/test_lane_outcomes.py::test_assess_shows_pair_when_lane1_passes_and_headline_iterates; scripts/python/run_aee.py _lane_pair, tests/test_lane_outcomes.py::test_gate_require_lane1_pass_forwards_and_preserves_exit_code; tests/test_lane_outcomes.py::test_gate_without_flag_does_not_forward_it) is shared with claim(s) LO-006-02, LO-006-03, LO-006-04, LO-006-05 and no independence is declared for it; the same evidence may be counted as independent corroboration in each claim",
+          "breakpoint": "Supporting evidence 'lo-after-inspection-2026-10-20' (ref(s): extension.yml; CHANGELOG.md; tests/test_evaluator_required.py::test_manifest_declares_evaluator_required; tests/test_draft_claims.py, scripts/python/run_aee.py REQUIRED_AEE_VERSION; extension.yml; tests/test_lane_outcomes.py::test_engine_1_5_x_is_refused_by_the_new_floor; tests/test_p5_vocabulary.py::test_floor_constants_agree_across_the_three_places, tests/test_lane_outcomes.py; scripts/python/run_aee.py _lane_pair/_gate; scripts/check_install.py _run_checks (Spec 006 block); engine 1.6.0 end-to-end run 2026-10-20) is shared with claim(s) LO-006-02, LO-006-03, LO-006-04, LO-006-05 and no independence is declared for it; the same evidence may be counted as independent corroboration in each claim",
           "severity": "medium",
           "category": "independence_unmodeled",
           "recovery_hint": "Declare independent_of between the evidence items, or record that the corroboration is shared.",
@@ -163,11 +163,11 @@
           "content_hash": null
         },
         {
-          "ref": "tests/test_lane_outcomes.py::test_gate_require_lane1_pass_forwards_and_preserves_exit_code; tests/test_lane_outcomes.py::test_gate_without_flag_does_not_forward_it",
+          "ref": "tests/test_lane_outcomes.py; scripts/python/run_aee.py _lane_pair/_gate; scripts/check_install.py _run_checks (Spec 006 block); engine 1.6.0 end-to-end run 2026-10-20",
           "kind": "observed",
           "direction": "supports",
           "source_quality": "artifact",
-          "description": "Shipped gate passthrough, verified against a stub engine that logs the argv it receives: with --require-lane1-pass the flag reaches the engine gate and the runner returns the engine's code exactly for 0, 1, and 2 (parametrized); without the flag the argv carries no such flag and the headline gate result (1) is returned unchanged; the parser default is off (test_gate_parser_require_lane1_pass_defaults_off). Real-engine exit-code verification waits on the engine 1.6.0 branch, recorded in the spec status.",
+          "description": "Shipped gate passthrough, verified two ways. Stub engine logging its argv: with --require-lane1-pass the flag reaches the engine gate and the runner returns the engine's code exactly for 0, 1, and 2 (parametrized); without the flag the argv carries no such flag and the headline result is unchanged; parser default is off. Real engine 1.6.0 through the runner on the lane-1-pass/headline-iterate assessment: plain gate exits 1 ('AEE gate: iterate'), gate --require-lane1-pass exits 0 ('AEE gate: iterate (lane 1: pass)'), and a forged lane_1 outcome (recorded pass, facts iterate) under --require-lane1-pass exits 2 with the engine's integrity refusal.",
           "source_id": "lo-after-inspection-2026-10-20",
           "independent_of": [],
           "observed_at": null,
@@ -201,7 +201,7 @@
           "id": "AEE-LO-006-02-INDEPENDENCE-UNMODELED",
           "claim_id": "LO-006-02",
           "challenge": "Shared-evidence independence challenge",
-          "breakpoint": "Supporting evidence 'lo-after-inspection-2026-10-20' (ref(s): extension.yml; CHANGELOG.md; tests/test_evaluator_required.py::test_manifest_declares_evaluator_required; tests/test_draft_claims.py, scripts/check_install.py _run_checks lane-pair block (Spec 006 LO-05), scripts/python/run_aee.py REQUIRED_AEE_VERSION; extension.yml; tests/test_lane_outcomes.py::test_engine_1_5_x_is_refused_by_the_new_floor; tests/test_p5_vocabulary.py::test_floor_constants_agree_across_the_three_places, tests/test_lane_outcomes.py::test_assess_shows_pair_when_lane1_passes_and_headline_iterates; scripts/python/run_aee.py _lane_pair, tests/test_lane_outcomes.py::test_gate_require_lane1_pass_forwards_and_preserves_exit_code; tests/test_lane_outcomes.py::test_gate_without_flag_does_not_forward_it) is shared with claim(s) LO-006-01, LO-006-03, LO-006-04, LO-006-05 and no independence is declared for it; the same evidence may be counted as independent corroboration in each claim",
+          "breakpoint": "Supporting evidence 'lo-after-inspection-2026-10-20' (ref(s): extension.yml; CHANGELOG.md; tests/test_evaluator_required.py::test_manifest_declares_evaluator_required; tests/test_draft_claims.py, scripts/python/run_aee.py REQUIRED_AEE_VERSION; extension.yml; tests/test_lane_outcomes.py::test_engine_1_5_x_is_refused_by_the_new_floor; tests/test_p5_vocabulary.py::test_floor_constants_agree_across_the_three_places, tests/test_lane_outcomes.py; scripts/python/run_aee.py _lane_pair/_gate; scripts/check_install.py _run_checks (Spec 006 block); engine 1.6.0 end-to-end run 2026-10-20) is shared with claim(s) LO-006-01, LO-006-03, LO-006-04, LO-006-05 and no independence is declared for it; the same evidence may be counted as independent corroboration in each claim",
           "severity": "medium",
           "category": "independence_unmodeled",
           "recovery_hint": "Declare independent_of between the evidence items, or record that the corroboration is shared.",
@@ -321,7 +321,7 @@
           "id": "AEE-LO-006-03-INDEPENDENCE-UNMODELED",
           "claim_id": "LO-006-03",
           "challenge": "Shared-evidence independence challenge",
-          "breakpoint": "Supporting evidence 'lo-after-inspection-2026-10-20' (ref(s): extension.yml; CHANGELOG.md; tests/test_evaluator_required.py::test_manifest_declares_evaluator_required; tests/test_draft_claims.py, scripts/check_install.py _run_checks lane-pair block (Spec 006 LO-05), scripts/python/run_aee.py REQUIRED_AEE_VERSION; extension.yml; tests/test_lane_outcomes.py::test_engine_1_5_x_is_refused_by_the_new_floor; tests/test_p5_vocabulary.py::test_floor_constants_agree_across_the_three_places, tests/test_lane_outcomes.py::test_assess_shows_pair_when_lane1_passes_and_headline_iterates; scripts/python/run_aee.py _lane_pair, tests/test_lane_outcomes.py::test_gate_require_lane1_pass_forwards_and_preserves_exit_code; tests/test_lane_outcomes.py::test_gate_without_flag_does_not_forward_it) is shared with claim(s) LO-006-01, LO-006-02, LO-006-04, LO-006-05 and no independence is declared for it; the same evidence may be counted as independent corroboration in each claim",
+          "breakpoint": "Supporting evidence 'lo-after-inspection-2026-10-20' (ref(s): extension.yml; CHANGELOG.md; tests/test_evaluator_required.py::test_manifest_declares_evaluator_required; tests/test_draft_claims.py, scripts/python/run_aee.py REQUIRED_AEE_VERSION; extension.yml; tests/test_lane_outcomes.py::test_engine_1_5_x_is_refused_by_the_new_floor; tests/test_p5_vocabulary.py::test_floor_constants_agree_across_the_three_places, tests/test_lane_outcomes.py; scripts/python/run_aee.py _lane_pair/_gate; scripts/check_install.py _run_checks (Spec 006 block); engine 1.6.0 end-to-end run 2026-10-20) is shared with claim(s) LO-006-01, LO-006-02, LO-006-04, LO-006-05 and no independence is declared for it; the same evidence may be counted as independent corroboration in each claim",
           "severity": "medium",
           "category": "independence_unmodeled",
           "recovery_hint": "Declare independent_of between the evidence items, or record that the corroboration is shared.",
@@ -441,7 +441,7 @@
           "id": "AEE-LO-006-04-INDEPENDENCE-UNMODELED",
           "claim_id": "LO-006-04",
           "challenge": "Shared-evidence independence challenge",
-          "breakpoint": "Supporting evidence 'lo-after-inspection-2026-10-20' (ref(s): extension.yml; CHANGELOG.md; tests/test_evaluator_required.py::test_manifest_declares_evaluator_required; tests/test_draft_claims.py, scripts/check_install.py _run_checks lane-pair block (Spec 006 LO-05), scripts/python/run_aee.py REQUIRED_AEE_VERSION; extension.yml; tests/test_lane_outcomes.py::test_engine_1_5_x_is_refused_by_the_new_floor; tests/test_p5_vocabulary.py::test_floor_constants_agree_across_the_three_places, tests/test_lane_outcomes.py::test_assess_shows_pair_when_lane1_passes_and_headline_iterates; scripts/python/run_aee.py _lane_pair, tests/test_lane_outcomes.py::test_gate_require_lane1_pass_forwards_and_preserves_exit_code; tests/test_lane_outcomes.py::test_gate_without_flag_does_not_forward_it) is shared with claim(s) LO-006-01, LO-006-02, LO-006-03, LO-006-05 and no independence is declared for it; the same evidence may be counted as independent corroboration in each claim",
+          "breakpoint": "Supporting evidence 'lo-after-inspection-2026-10-20' (ref(s): extension.yml; CHANGELOG.md; tests/test_evaluator_required.py::test_manifest_declares_evaluator_required; tests/test_draft_claims.py, scripts/python/run_aee.py REQUIRED_AEE_VERSION; extension.yml; tests/test_lane_outcomes.py::test_engine_1_5_x_is_refused_by_the_new_floor; tests/test_p5_vocabulary.py::test_floor_constants_agree_across_the_three_places, tests/test_lane_outcomes.py; scripts/python/run_aee.py _lane_pair/_gate; scripts/check_install.py _run_checks (Spec 006 block); engine 1.6.0 end-to-end run 2026-10-20) is shared with claim(s) LO-006-01, LO-006-02, LO-006-03, LO-006-05 and no independence is declared for it; the same evidence may be counted as independent corroboration in each claim",
           "severity": "medium",
           "category": "independence_unmodeled",
           "recovery_hint": "Declare independent_of between the evidence items, or record that the corroboration is shared.",
@@ -525,11 +525,11 @@
           "content_hash": null
         },
         {
-          "ref": "scripts/check_install.py _run_checks lane-pair block (Spec 006 LO-05)",
+          "ref": "tests/test_lane_outcomes.py; scripts/python/run_aee.py _lane_pair/_gate; scripts/check_install.py _run_checks (Spec 006 block); engine 1.6.0 end-to-end run 2026-10-20",
           "kind": "observed",
           "direction": "supports",
           "source_quality": "artifact",
-          "description": "Shipped install-check exercise: after its first installed assess, check_install.py parses the installed assessment, requires a lane_pair whose lane_1_outcome equals the assessment's recorded lanes.lane_1.outcome, whose headline_outcome matches, whose lane_2_state is open or complete, and whose display starts with 'headline:' and names both lanes, failing the script otherwise; the block compiles and passes ruff with the rest of the suite. Its end-to-end PASS run requires engine 1.6.0 (the installed runner provisions >=1.6.0,<2), which is not yet published - recorded in the spec status.",
+          "description": "Shipped and run end to end: scripts/check_install.py against the real spec-kit-evaluator v1.1.2 checkout (commit 40413ae) with engine 1.6.0 prints 'lane pair from the installed assess: headline: iterate - lane 1: iterate, lane 2: open (1 draft claim(s); 1 claim(s) below stage 'explained')' (the template claim is unsupported, so lane 1 iterate is the correct reading there) and finishes PASS, with the pair block failing the script on any mismatch.",
           "source_id": "lo-after-inspection-2026-10-20",
           "independent_of": [],
           "observed_at": null,
@@ -563,7 +563,7 @@
           "id": "AEE-LO-006-05-INDEPENDENCE-UNMODELED",
           "claim_id": "LO-006-05",
           "challenge": "Shared-evidence independence challenge",
-          "breakpoint": "Supporting evidence 'lo-after-inspection-2026-10-20' (ref(s): extension.yml; CHANGELOG.md; tests/test_evaluator_required.py::test_manifest_declares_evaluator_required; tests/test_draft_claims.py, scripts/check_install.py _run_checks lane-pair block (Spec 006 LO-05), scripts/python/run_aee.py REQUIRED_AEE_VERSION; extension.yml; tests/test_lane_outcomes.py::test_engine_1_5_x_is_refused_by_the_new_floor; tests/test_p5_vocabulary.py::test_floor_constants_agree_across_the_three_places, tests/test_lane_outcomes.py::test_assess_shows_pair_when_lane1_passes_and_headline_iterates; scripts/python/run_aee.py _lane_pair, tests/test_lane_outcomes.py::test_gate_require_lane1_pass_forwards_and_preserves_exit_code; tests/test_lane_outcomes.py::test_gate_without_flag_does_not_forward_it) is shared with claim(s) LO-006-01, LO-006-02, LO-006-03, LO-006-04 and no independence is declared for it; the same evidence may be counted as independent corroboration in each claim",
+          "breakpoint": "Supporting evidence 'lo-after-inspection-2026-10-20' (ref(s): extension.yml; CHANGELOG.md; tests/test_evaluator_required.py::test_manifest_declares_evaluator_required; tests/test_draft_claims.py, scripts/python/run_aee.py REQUIRED_AEE_VERSION; extension.yml; tests/test_lane_outcomes.py::test_engine_1_5_x_is_refused_by_the_new_floor; tests/test_p5_vocabulary.py::test_floor_constants_agree_across_the_three_places, tests/test_lane_outcomes.py; scripts/python/run_aee.py _lane_pair/_gate; scripts/check_install.py _run_checks (Spec 006 block); engine 1.6.0 end-to-end run 2026-10-20) is shared with claim(s) LO-006-01, LO-006-02, LO-006-03, LO-006-04 and no independence is declared for it; the same evidence may be counted as independent corroboration in each claim",
           "severity": "medium",
           "category": "independence_unmodeled",
           "recovery_hint": "Declare independent_of between the evidence items, or record that the corroboration is shared.",
@@ -969,7 +969,7 @@
       "mode": "disabled",
       "path": null
     },
-    "engine_version": "1.5.3"
+    "engine_version": "1.6.0"
   },
   "reported_statuses": {
     "LO-006-01": "draft",
