@@ -13,6 +13,15 @@ All notable changes follow Semantic Versioning.
   Before this change the headline was the only reading shown, so work
   the machine checks had passed still read as a lone `iterate`
   whenever lane 2 was open.
+- The lane pair also shows the basis of acceptance (Spec 006
+  amendment, autonomous-execution doctrine v2). When an assessment
+  records stage events, `lane_pair.acceptance_basis` lists each
+  recorded act with the basis it stands on — a test verdict (the
+  frozen requirement tests passed, recorded by the tool) or a human
+  act (a named person recorded an explanation, acceptance, or
+  digestion) — with a count line. Acceptance is not presented as a
+  human act by default; human acts are the reserved cases. An
+  assessment recording no acts carries `acceptance_basis: null`.
 - `gate` gains `--require-lane1-pass`: the runner forwards the option
   to the engine's gate, which exits 0 when lane 1 passes on its own
   facts, 1 when lane 1 needs recovery work, and 2 when it blocks or

@@ -30,7 +30,13 @@ The printed JSON lists `assessment`, `evaluator_result`, `ledger`,
 alongside the headline, in one line (`display`): lane 1 is what the
 machine checks proved, lane 2 is where human review and acceptance
 stand (`open`, with the recorded reasons, or `complete`), and the
-headline stays cautious until both are done. A lane-1 `pass` under
+headline stays cautious until both are done. When the assessment
+records stage events, the pair also carries `acceptance_basis`: the
+basis each recorded act stands on — a test verdict (the frozen
+requirement tests passed, recorded by the tool) or a human act (a
+named person recorded an explanation, acceptance, or digestion).
+Acceptance is not a human act by default; human acts are the
+reserved cases. A lane-1 `pass` under
 an `iterate` headline means the machine checks passed while people
 are still reviewing; it is not a contradiction. The printed JSON
 also lists — after a ledgered assess — `ledger_verification`, the

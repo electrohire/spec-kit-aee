@@ -145,3 +145,22 @@ extension that stops showing the pair fails the install check.
   coordinator's steps after review.
 - Headline logic is unchanged: the headline stays cautious until
   both lanes are done.
+
+## Amendment (2026-10-20) — acceptance basis, doctrine v2
+
+Owner decision, 2026-10-20, after the original claims above were
+assessed: work is planned in full and approved once, then executed
+without intervention; acceptance is the frozen tests passing, and
+human acts are reserved for the cases that need a person's judgement
+or an irreversible decision. Applied here (LO-006-06): the assess
+and gate surfaces present acceptance in those terms. The lane pair
+carries `acceptance_basis` whenever the assessment records stage
+events — each recorded act with its stage, its recorder, its stated
+basis, and its basis type: a **test verdict** (a checking event
+recorded by the tool, `aee`) or a **human act** (an advance to
+`explained`, `accepted`, or `digested`, or any act a named person
+recorded — the stages the engine itself reserves to people). No
+recorded acts → `acceptance_basis: null`. The claim was added by
+this amendment and assessed once, after implementation
+(`claims-amendment.json` / `assessment-amendment.json`); its
+before state is recorded in its evidence, not scored separately.

@@ -186,7 +186,7 @@ headline: iterate — lane 1: pass, lane 2: open (4 draft claim(s); 4 claim(s) b
 ```
 
 - **Lane 1 is what the machine checks proved** — scores against the threshold, and any failures the checks found.
-- **Lane 2 is where human review and acceptance stand** — draft claims, claims not yet explained or accepted, and similar review state.
+- **Lane 2 is where recorded acceptance stands** — draft claims, claims not yet explained or accepted, and similar review state. Acceptance is not a human act by default: in the normal path it is the frozen requirement tests passing, recorded as a checking event (a *test verdict*). A *human act* is recorded only where the work calls for one — an explanation, an acceptance, or a digestion by a named person. When the assessment records such acts, `lane_pair.acceptance_basis` shows each one's basis alongside the pair, with a count line such as `acceptance basis: 1 test verdict(s), 0 human act(s)`.
 - **The headline stays cautious until both are done.** A lane-1 `pass` under an `iterate` headline is not a contradiction: it means the machine checks passed and people are still reviewing. Before engine 1.6.0, lane 1 simply copied the headline, so that distinction could not be seen at all.
 
 A CI step that needs the machine checks to have passed on their own — even while review is still open — can gate on lane 1 alone: `run_aee.py gate --input <assessment> --require-lane1-pass` exits 0 when lane 1 passes, 1 when lane 1 needs recovery work, and 2 when the engine blocks or refuses on integrity grounds (for example, a recorded lane-1 outcome the recorded facts do not support). Without the option, `gate` applies the headline outcome as before.

@@ -377,6 +377,11 @@ def _run_checks(
             f"that records lanes: {paths}",
         )
         check(
+            "acceptance_basis" in pair,
+            f"lane_pair must carry the acceptance_basis key (the "
+            f"recorded acts' basis, or null when none is recorded): {pair}",
+        )
+        check(
             pair["lane_1_outcome"] == recorded_lane_1
             and pair["headline_outcome"] == installed_assessment.get("outcome")
             and pair["lane_2_state"] in {"open", "complete"}

@@ -74,7 +74,13 @@ facts behind it, and a one-line ``display`` such as ``headline:
 iterate — lane 1: pass, lane 2: open (4 draft claim(s); 4 claim(s)
 below stage 'explained')``. Lane 1 is what the machine checks proved;
 lane 2 is where human review and acceptance stand; the headline
-stays cautious until both are done. ``gate --require-lane1-pass``
+stays cautious until both are done. The pair also carries
+``acceptance_basis`` when the assessment records stage events: the
+basis each recorded act stands on — a test verdict (the frozen
+requirement tests passed, recorded by the tool) or a human act (a
+named person recorded an explanation, acceptance, or digestion).
+Acceptance is not presented as a human act by default; the human
+acts are the reserved cases. ``gate --require-lane1-pass``
 forwards the engine's lane-1 requirement unchanged and preserves its
 exit codes exactly: 0 lane-1 pass, 1 lane-1 iterate family, 2 block
 or integrity refusal.
@@ -1437,6 +1443,85 @@ def _lane_count(lane: dict, name: str) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
+# Stages the engine treats as human acts: advancing to `explained`
+# requires a named human's exposition, and advancing to `accepted`
+# or `digested` requires the recorder to resolve to a person in the
+# project's identity registry (the engine refuses otherwise). A
+# `checked` event recorded by `aee` itself is the other kind of
+# basis: a test verdict — the frozen requirement tests passed and
+# the tool recorded the result. Any other recorded act was recorded
+# by a named person, so it is a human act on its face.
+_HUMAN_ACT_STAGES = frozenset({"explained", "accepted", "digested"})
+
+
+def _acceptance_basis(value: dict) -> dict | None:
+    """The basis each recorded acceptance act stands on (Spec 006
+    amendment, autonomous-execution doctrine v2).
+
+    Acceptance is not presented as a human act by default. In the
+    normal path, acceptance is the frozen requirement tests passing,
+    recorded as a checking event; human acts are the reserved cases
+    (an explanation, an acceptance, a digestion a person records).
+    The engine exposes the recorded acts themselves — each assessed
+    claim's `stage_events`, with the stage advanced to (`kind`),
+    who recorded it (`author`), and the stated reason (`basis`) —
+    so the pair shows that basis alongside the lanes whenever the
+    assessment records one:
+
+        acceptance basis: 1 test verdict(s), 1 human act(s)
+
+    Every value is copied from the record; the only judgement added
+    is the basis type, classified by the rule the engine itself
+    enforces (see _HUMAN_ACT_STAGES above). An assessment recording
+    no stage events yields None, never an invented basis.
+    """
+    claims = value.get("claims")
+    if not isinstance(claims, list):
+        return None
+    acts: list[dict] = []
+    for claim in claims:
+        if not isinstance(claim, dict):
+            continue
+        events = claim.get("stage_events")
+        if not isinstance(events, list):
+            continue
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            kind = event.get("kind")
+            author = event.get("author")
+            if not isinstance(kind, str) or not kind:
+                continue
+            basis_type = (
+                "human act"
+                if kind in _HUMAN_ACT_STAGES
+                or (isinstance(author, str) and author and author != "aee")
+                else "test verdict"
+            )
+            acts.append(
+                {
+                    "claim_id": claim.get("id"),
+                    "to_stage": kind,
+                    "basis_type": basis_type,
+                    "recorded_by": author,
+                    "basis": event.get("basis"),
+                }
+            )
+    if not acts:
+        return None
+    test_verdicts = sum(1 for act in acts if act["basis_type"] == "test verdict")
+    human_acts = len(acts) - test_verdicts
+    return {
+        "recorded_acts": acts,
+        "test_verdict_count": test_verdicts,
+        "human_act_count": human_acts,
+        "display": (
+            f"acceptance basis: {test_verdicts} test verdict(s), "
+            f"{human_acts} human act(s)"
+        ),
+    }
+
+
 def _lane_pair(value: dict) -> dict | None:
     """The lane pair, shown alongside the headline (Spec 006 LO-01).
 
@@ -1515,6 +1600,7 @@ def _lane_pair(value: dict) -> dict | None:
         "lane_2_state": state,
         "lane_2_reasons": reasons,
         "display": display,
+        "acceptance_basis": _acceptance_basis(value),
     }
 
 

@@ -61,7 +61,17 @@ if command == "assess":
             "phase": flag("--phase") or "after_plan",
             "outcome": "iterate",
             "methodology_version": "2.1",
-            "claims": [],
+            "claims": [{
+                "id": "A",
+                "stage_events": [
+                    {"kind": "checked", "author": "aee",
+                     "date": "2026-10-20T00:00:00Z",
+                     "basis": "Frozen requirement tests passed and assessed"},
+                    {"kind": "accepted", "author": "casey-example",
+                     "date": "2026-10-20T01:00:00Z",
+                     "basis": "Recorded acceptance of the explained evidence"},
+                ],
+            }],
             "reported_statuses": {"A": "draft"},
             "stage_caps": [],
             "lanes": {
@@ -179,6 +189,30 @@ def test_assess_shows_pair_when_lane1_passes_and_headline_iterates(
     )
     # The same pair rides inside verdict_display, value for value.
     assert out["verdict_display"]["lane_pair"] == pair
+    # The recorded acts' basis rides alongside the pair (Spec 006
+    # amendment): the checking event recorded by the tool is a test
+    # verdict; the acceptance recorded by a named person is a human
+    # act — acceptance is not presented as a human act by default.
+    basis = pair["acceptance_basis"]
+    assert basis["test_verdict_count"] == 1
+    assert basis["human_act_count"] == 1
+    assert basis["display"] == "acceptance basis: 1 test verdict(s), 1 human act(s)"
+    assert basis["recorded_acts"] == [
+        {
+            "claim_id": "A",
+            "to_stage": "checked",
+            "basis_type": "test verdict",
+            "recorded_by": "aee",
+            "basis": "Frozen requirement tests passed and assessed",
+        },
+        {
+            "claim_id": "A",
+            "to_stage": "accepted",
+            "basis_type": "human act",
+            "recorded_by": "casey-example",
+            "basis": "Recorded acceptance of the explained evidence",
+        },
+    ]
 
 
 @requires_posix_stub
@@ -216,6 +250,43 @@ def test_lane_pair_complete_when_lane2_has_no_open_work() -> None:
     assert pair["lane_2_state"] == "complete"
     assert pair["lane_2_reasons"] == []
     assert pair["display"] == "headline: pass — lane 1: pass, lane 2: complete"
+    # No stage events recorded anywhere: no basis is invented.
+    assert pair["acceptance_basis"] is None
+
+
+def test_acceptance_basis_classification_follows_the_engine_rule() -> None:
+    basis = run_aee._acceptance_basis(
+        {
+            "claims": [
+                {
+                    "id": "A",
+                    "stage_events": [
+                        # Tool-recorded check: a test verdict.
+                        {"kind": "checked", "author": "aee", "basis": "tests passed"},
+                        # Person-recorded check: a human act on its face.
+                        {"kind": "checked", "author": "casey", "basis": "I ran them"},
+                        # Explained/accepted/digested are human acts by
+                        # the engine's own rule, whoever records them.
+                        {"kind": "explained", "author": "aee", "basis": "exposition"},
+                        {"kind": "digested", "author": "aee", "basis": "digested"},
+                    ],
+                },
+                {"id": "B", "stage_events": []},
+                {"id": "C"},
+            ]
+        }
+    )
+    assert basis is not None
+    assert [act["basis_type"] for act in basis["recorded_acts"]] == [
+        "test verdict",
+        "human act",
+        "human act",
+        "human act",
+    ]
+    assert basis["test_verdict_count"] == 1
+    assert basis["human_act_count"] == 3
+    assert run_aee._acceptance_basis({"claims": []}) is None
+    assert run_aee._acceptance_basis({}) is None
 
 
 def test_lane_pair_reads_the_nested_bundle_shape() -> None:
