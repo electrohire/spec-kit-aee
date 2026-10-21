@@ -96,6 +96,77 @@ if command == "assess":
             "not_understood": ["A: what remains not understood"],
             "metadata": {"engine_version": "1.6.0"},
         }
+    elif shape == "stored-basis":
+        # The shape the real engine 1.6.0 writes: each claim carries
+        # its stage events AND the recorded acts stored on the claim
+        # (metadata.recorded_acts), every act with its explicit
+        # basis type. Here the acceptance stands on a test verdict
+        # and the earlier advances stand on human acts — while the
+        # stage events alone (kinds and the tool author) point the
+        # other way, which is the Phase D inversion.
+        payload = {
+            "project": "stub-project",
+            "phase": flag("--phase") or "after_plan",
+            "outcome": "iterate",
+            "methodology_version": "2.1",
+            "claims": [{
+                "id": "PC-1",
+                "stage_events": [
+                    {"kind": "checked", "author": "aee",
+                     "date": "2026-10-20T00:00:00Z", "basis": "Assessed"},
+                    {"kind": "explained", "author": "aee",
+                     "date": "2026-10-20T01:00:00Z",
+                     "basis": "Exposition on record"},
+                    {"kind": "accepted", "author": "aee",
+                     "date": "2026-10-20T02:00:00Z",
+                     "basis": "Acceptance run passed"},
+                ],
+                "metadata": {
+                    "recorded_acts": [
+                        {"kind": "stage", "to_stage": "checked",
+                         "from_stage": "created", "author": "aee",
+                         "date": "2026-10-20T00:00:00Z",
+                         "basis": "Assessed", "basis_type": "human-act"},
+                        {"kind": "stage", "to_stage": "explained",
+                         "from_stage": "checked", "author": "aee",
+                         "date": "2026-10-20T01:00:00Z",
+                         "basis": "Exposition on record",
+                         "basis_type": "human-act"},
+                        {"kind": "stage", "to_stage": "accepted",
+                         "from_stage": "explained", "author": "aee",
+                         "date": "2026-10-20T02:00:00Z",
+                         "basis": "Acceptance run passed",
+                         "basis_type": "test-verdict",
+                         "test_id": "AT-PC-1",
+                         "test_hash": "ab" * 32,
+                         "test_result": "pass"},
+                    ],
+                },
+            }],
+            "reported_statuses": {"PC-1": "supported"},
+            "stage_caps": [],
+            "lanes": {
+                "lane_1": {
+                    "label": "machine verification",
+                    "outcome": "pass",
+                    "threshold": 0.7,
+                    "claims_at_or_above_threshold": 1,
+                    "claims_below_threshold": 0,
+                },
+                "lane_2": {
+                    "label": "human acceptance",
+                    "stage_counts": {"created": 0, "checked": 0,
+                                     "explained": 0, "accepted": 1,
+                                     "digested": 0},
+                    "claims_below_explained": 0,
+                    "exposition_covered_claims": 1,
+                    "exposition_missing_claims": 0,
+                    "verified_unexplained_claims": 0,
+                },
+            },
+            "not_understood": [],
+            "metadata": {"engine_version": "1.6.0"},
+        }
     else:
         payload = {
             "project": "stub-project",
@@ -287,6 +358,137 @@ def test_acceptance_basis_classification_follows_the_engine_rule() -> None:
     assert basis["human_act_count"] == 3
     assert run_aee._acceptance_basis({"claims": []}) is None
     assert run_aee._acceptance_basis({}) is None
+
+
+def test_acceptance_basis_stored_basis_type_governs() -> None:
+    # The engine stores each recorded act's basis type on the claim
+    # (metadata.recorded_acts). The display must show the stored
+    # type as itself — never a type inferred from the stage kind or
+    # the recording author, which inverts exactly the two cases the
+    # basis typing exists to distinguish (Phase D deviation D2):
+    # an acceptance recorded as a TEST VERDICT (stage kind
+    # 'accepted', written by the tool) is not a human act, and a
+    # stage advance recorded as a HUMAN ACT whose stage event the
+    # tool wrote ('checked', author 'aee') is not a test verdict.
+    basis = run_aee._acceptance_basis(
+        {
+            "claims": [
+                {
+                    "id": "PC-1",
+                    "stage_events": [
+                        {"kind": "checked", "author": "aee",
+                         "date": "2026-10-20T00:00:00Z", "basis": "Assessed"},
+                        {"kind": "explained", "author": "aee",
+                         "date": "2026-10-20T01:00:00Z",
+                         "basis": "Exposition on record"},
+                        {"kind": "accepted", "author": "aee",
+                         "date": "2026-10-20T02:00:00Z",
+                         "basis": "Acceptance run passed"},
+                    ],
+                    "metadata": {
+                        "recorded_acts": [
+                            {"kind": "stage", "to_stage": "checked",
+                             "from_stage": "created", "author": "aee",
+                             "date": "2026-10-20T00:00:00Z",
+                             "basis": "Assessed",
+                             "basis_type": "human-act"},
+                            {"kind": "stage", "to_stage": "explained",
+                             "from_stage": "checked", "author": "aee",
+                             "date": "2026-10-20T01:00:00Z",
+                             "basis": "Exposition on record",
+                             "basis_type": "human-act"},
+                            {"kind": "stage", "to_stage": "accepted",
+                             "from_stage": "explained", "author": "aee",
+                             "date": "2026-10-20T02:00:00Z",
+                             "basis": "Acceptance run passed",
+                             "basis_type": "test-verdict",
+                             "test_id": "AT-PC-1",
+                             "test_hash": "ab" * 32,
+                             "test_result": "pass"},
+                        ],
+                    },
+                },
+            ]
+        }
+    )
+    assert basis is not None
+    assert [act["basis_type"] for act in basis["recorded_acts"]] == [
+        "human act",
+        "human act",
+        "test verdict",
+    ]
+    assert basis["test_verdict_count"] == 1
+    assert basis["human_act_count"] == 2
+    assert basis["display"] == "acceptance basis: 1 test verdict(s), 2 human act(s)"
+
+
+def test_acceptance_basis_stored_act_without_stage_event_still_shows() -> None:
+    # A stored act is the bundle's own record of the act; if its
+    # stage event is not on the assessment, the act still shows
+    # with its stored basis type rather than being dropped.
+    basis = run_aee._acceptance_basis(
+        {
+            "claims": [
+                {
+                    "id": "PC-1",
+                    "stage_events": [],
+                    "metadata": {
+                        "recorded_acts": [
+                            {"kind": "stage", "to_stage": "accepted",
+                             "from_stage": "explained", "author": "aee",
+                             "date": "2026-10-20T02:00:00Z",
+                             "basis": "Acceptance run passed",
+                             "basis_type": "test-verdict",
+                             "test_id": "AT-PC-1",
+                             "test_hash": "ab" * 32,
+                             "test_result": "pass"},
+                        ],
+                    },
+                },
+            ]
+        }
+    )
+    assert basis is not None
+    assert basis["recorded_acts"] == [
+        {
+            "claim_id": "PC-1",
+            "to_stage": "accepted",
+            "basis_type": "test verdict",
+            "recorded_by": "aee",
+            "basis": "Acceptance run passed",
+        },
+    ]
+    assert basis["test_verdict_count"] == 1
+    assert basis["human_act_count"] == 0
+
+
+@requires_posix_stub
+def test_assess_shows_stored_basis_types_as_themselves(tmp_path: Path) -> None:
+    # Through the runner's real assess surface, on an assessment in
+    # the real engine 1.6.0 shape (see the stub's "stored-basis"
+    # payload): the pair's acceptance basis shows the stored basis
+    # types as themselves — the test-verdict acceptance as a test
+    # verdict, the human-act advances as human acts.
+    root = _project(tmp_path)
+    completed = _run(
+        root, _env(tmp_path, AEE_STUB_SHAPE="stored-basis"),
+        "assess", "--input", "claims.json",
+    )
+    assert completed.returncode == 1, completed.stderr
+    out = json.loads(completed.stdout)
+    basis = out["lane_pair"]["acceptance_basis"]
+    assert [act["basis_type"] for act in basis["recorded_acts"]] == [
+        "human act",
+        "human act",
+        "test verdict",
+    ]
+    assert basis["test_verdict_count"] == 1
+    assert basis["human_act_count"] == 2
+    assert basis["display"] == "acceptance basis: 1 test verdict(s), 2 human act(s)"
+    assert basis["recorded_acts"][2]["to_stage"] == "accepted"
+    assert basis["recorded_acts"][0]["to_stage"] == "checked"
+    # The same basis rides inside verdict_display, value for value.
+    assert out["verdict_display"]["lane_pair"]["acceptance_basis"] == basis
 
 
 def test_lane_pair_reads_the_nested_bundle_shape() -> None:

@@ -164,3 +164,30 @@ recorded acts → `acceptance_basis: null`. The claim was added by
 this amendment and assessed once, after implementation
 (`claims-amendment.json` / `assessment-amendment.json`); its
 before state is recorded in its evidence, not scored separately.
+
+## Deviation D2 fix (2026-10-20) — stored basis types govern
+
+The Phase D integration proof, run against the real engine 1.6.0,
+found the amendment's display inverting the basis it exists to
+show: the engine stores every recorded act's explicit basis type
+on the claim (`metadata.recorded_acts`), and acceptance recorded
+as a test verdict displayed as a human act, while a stage advance
+recorded as a human act displayed as a test verdict — because the
+runner inferred the type from the stage kind and the recording
+author (the classification sentence above) instead of reading
+the stored type. The bundle and the ledger held the truth
+throughout; only the display contradicted them.
+
+Fixed: a stored basis type is displayed as itself
+(`test-verdict` → test verdict, `human-act` → human act); the
+stage/author rule now classifies only a stage event the engine
+stored no basis type for (a record written before basis types
+were stored). Three tests pin the stored-type behavior — both
+directions, at the classification and through the runner's
+assess surface on an assessment in the real engine's shape — and
+fail on the unfixed code with the inversion. Verified end to end
+against the engine 1.6.0 candidate (engine PR #63 branch): a
+claim advanced checked → explained → accepted, the acceptance
+recorded as a test verdict, displays `checked → human act`,
+`explained → human act`, `accepted → test verdict`. Full suite
+with engine 1.6.0: 172 passed, 2 skipped.

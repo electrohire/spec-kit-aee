@@ -1443,15 +1443,63 @@ def _lane_count(lane: dict, name: str) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
-# Stages the engine treats as human acts: advancing to `explained`
+# The display word for each basis type the engine stores on a
+# recorded act (Spec 006, engine A4): the stored type, shown as
+# itself — a stored "test-verdict" displays as a test verdict and
+# a stored "human-act" as a human act. The runner never re-derives
+# a stored type.
+_BASIS_TYPE_DISPLAY = {
+    "test-verdict": "test verdict",
+    "human-act": "human act",
+}
+
+# Fallback classification for a stage event the engine stored no
+# basis type for (records written before the engine stored one):
+# stages the engine treats as human acts — advancing to `explained`
 # requires a named human's exposition, and advancing to `accepted`
-# or `digested` requires the recorder to resolve to a person in the
-# project's identity registry (the engine refuses otherwise). A
-# `checked` event recorded by `aee` itself is the other kind of
-# basis: a test verdict — the frozen requirement tests passed and
-# the tool recorded the result. Any other recorded act was recorded
-# by a named person, so it is a human act on its face.
+# or `digested` on a human act requires the recorder to resolve to
+# a person in the project's identity registry (the engine refuses
+# otherwise). A `checked` event recorded by `aee` itself is the
+# other kind of basis: a test verdict — the frozen requirement
+# tests passed and the tool recorded the result. Any other recorded
+# act was recorded by a named person, so it is a human act on its
+# face.
 _HUMAN_ACT_STAGES = frozenset({"explained", "accepted", "digested"})
+
+
+def _stored_stage_acts(claim: dict) -> list[dict]:
+    """The recorded stage acts the engine stored on the claim
+    (`metadata.recorded_acts`), each carrying its explicit basis
+    type. Only the stage acts are returned — the lane pair's basis
+    display is built from the claim's stage advances, and these are
+    the stored records of those same acts."""
+    metadata = claim.get("metadata")
+    if not isinstance(metadata, dict):
+        return []
+    recorded = metadata.get("recorded_acts")
+    if not isinstance(recorded, list):
+        return []
+    return [
+        act
+        for act in recorded
+        if isinstance(act, dict) and act.get("kind") == "stage"
+    ]
+
+
+def _match_stored_act(stored: list[dict], event: dict) -> dict | None:
+    """The stored act recording this stage event, if one is stored:
+    same stage advanced to, same recorder, same date, same stated
+    basis — the engine writes the act and the event from the same
+    values, so all four agree on a real record."""
+    for act in stored:
+        if (
+            act.get("to_stage") == event.get("kind")
+            and act.get("author") == event.get("author")
+            and act.get("date") == event.get("date")
+            and act.get("basis") == event.get("basis")
+        ):
+            return act
+    return None
 
 
 def _acceptance_basis(value: dict) -> dict | None:
@@ -1462,18 +1510,25 @@ def _acceptance_basis(value: dict) -> dict | None:
     normal path, acceptance is the frozen requirement tests passing,
     recorded as a checking event; human acts are the reserved cases
     (an explanation, an acceptance, a digestion a person records).
-    The engine exposes the recorded acts themselves — each assessed
-    claim's `stage_events`, with the stage advanced to (`kind`),
-    who recorded it (`author`), and the stated reason (`basis`) —
-    so the pair shows that basis alongside the lanes whenever the
-    assessment records one:
+    The engine stores every recorded act on the claim itself —
+    `metadata.recorded_acts`, each with the stage advanced to, who
+    recorded it, the stated reason, and the act's explicit basis
+    type (`human-act` or `test-verdict`) — alongside the claim's
+    `stage_events`, so the pair shows that basis alongside the
+    lanes whenever the assessment records one:
 
         acceptance basis: 1 test verdict(s), 1 human act(s)
 
-    Every value is copied from the record; the only judgement added
-    is the basis type, classified by the rule the engine itself
-    enforces (see _HUMAN_ACT_STAGES above). An assessment recording
-    no stage events yields None, never an invented basis.
+    A stored basis type is displayed as itself: a test-verdict
+    acceptance shows as a test verdict even though its stage event
+    is an `accepted` advance written by the tool, and a human-act
+    advance shows as a human act even though its stage event is a
+    `checked` advance the tool wrote. Inferring the type from the
+    stage or the author inverts exactly those two cases (Phase D
+    deviation D2), so the stage/author rule below classifies only
+    a stage event the engine stored no basis type for (a record
+    written before basis types were stored). An assessment
+    recording no acts yields None, never an invented basis.
     """
     claims = value.get("claims")
     if not isinstance(claims, list):
@@ -1484,7 +1539,8 @@ def _acceptance_basis(value: dict) -> dict | None:
             continue
         events = claim.get("stage_events")
         if not isinstance(events, list):
-            continue
+            events = []
+        stored = _stored_stage_acts(claim)
         for event in events:
             if not isinstance(event, dict):
                 continue
@@ -1492,12 +1548,18 @@ def _acceptance_basis(value: dict) -> dict | None:
             author = event.get("author")
             if not isinstance(kind, str) or not kind:
                 continue
-            basis_type = (
-                "human act"
-                if kind in _HUMAN_ACT_STAGES
-                or (isinstance(author, str) and author and author != "aee")
-                else "test verdict"
-            )
+            basis_type = None
+            match = _match_stored_act(stored, event)
+            if match is not None:
+                stored.remove(match)
+                basis_type = _BASIS_TYPE_DISPLAY.get(match.get("basis_type"))
+            if basis_type is None:
+                basis_type = (
+                    "human act"
+                    if kind in _HUMAN_ACT_STAGES
+                    or (isinstance(author, str) and author and author != "aee")
+                    else "test verdict"
+                )
             acts.append(
                 {
                     "claim_id": claim.get("id"),
@@ -1505,6 +1567,22 @@ def _acceptance_basis(value: dict) -> dict | None:
                     "basis_type": basis_type,
                     "recorded_by": author,
                     "basis": event.get("basis"),
+                }
+            )
+        for act in stored:
+            # A stored act whose stage event is not on this record:
+            # the bundle is the truth, so the act still shows, with
+            # its stored basis type, rather than being dropped.
+            basis_type = _BASIS_TYPE_DISPLAY.get(act.get("basis_type"))
+            if basis_type is None:
+                continue
+            acts.append(
+                {
+                    "claim_id": claim.get("id"),
+                    "to_stage": act.get("to_stage"),
+                    "basis_type": basis_type,
+                    "recorded_by": act.get("author"),
+                    "basis": act.get("basis"),
                 }
             )
     if not acts:
