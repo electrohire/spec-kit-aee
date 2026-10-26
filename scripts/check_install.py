@@ -360,6 +360,39 @@ def _run_checks(
             (root / paths["assessment"]).is_file(),
             f"assess named a missing assessment file: {paths}",
         )
+        # Spec 006 (LO-05): the installed assess must surface the lane
+        # pair end to end — a lane_pair block whose lane-1 outcome is
+        # the installed assessment's own recorded lane-1 outcome, and
+        # whose one-line display names the headline and both lanes.
+        installed_assessment = json.loads(
+            (root / paths["assessment"]).read_text(encoding="utf-8")
+        )
+        recorded_lane_1 = (
+            installed_assessment.get("lanes", {}).get("lane_1", {}).get("outcome")
+        )
+        pair = paths.get("lane_pair")
+        check(
+            isinstance(pair, dict) and recorded_lane_1 is not None,
+            f"assess summary must carry a lane_pair for an assessment "
+            f"that records lanes: {paths}",
+        )
+        check(
+            "acceptance_basis" in pair,
+            f"lane_pair must carry the acceptance_basis key (the "
+            f"recorded acts' basis, or null when none is recorded): {pair}",
+        )
+        check(
+            pair["lane_1_outcome"] == recorded_lane_1
+            and pair["headline_outcome"] == installed_assessment.get("outcome")
+            and pair["lane_2_state"] in {"open", "complete"}
+            and "lane 1:" in pair["display"]
+            and "lane 2:" in pair["display"]
+            and pair["display"].startswith("headline:"),
+            f"lane_pair must match the installed assessment's own "
+            f"lanes and name both lanes: {pair} vs assessment lanes "
+            f"{installed_assessment.get('lanes')}",
+        )
+        print(f"lane pair from the installed assess: {pair['display']}")
         check(
             (root / paths["evaluator_result"]).is_file(),
             f"assess named a missing evaluator result: {paths}",

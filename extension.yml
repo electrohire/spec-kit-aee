@@ -3,7 +3,7 @@ schema_version: '1.0'
 extension:
   id: aee
   name: Applied Epistemic Engineering
-  version: 1.5.2
+  version: 1.6.0
   description: Challenge claims, trace evidence, propagate uncertainty, and route epistemic failures across phases
   category: process
   effect: read-write
@@ -23,15 +23,19 @@ requires:
     # gates, reliability blending, and review subcommand; 1.5.0 is
     # the realigned engine (Spec 004 vocabulary: lifecycle
     # stages, stage-capped reported statuses, lane-paired outcomes,
-    # not_understood, methodology 2.0) - the floor moves to it so
-    # pre-realignment engines are refused cleanly. Spec Kit installs no
+    # not_understood, methodology 2.0); 1.6.0 computes the lane-1
+    # outcome from lane-1 facts alone (it no longer copies the
+    # headline), adds the gate's --require-lane1-pass option, and
+    # carries methodology 2.1 - the floor moves to it so engines
+    # whose lane 1 cannot show its own result are refused cleanly.
+    # Spec Kit installs no
     # Python packages, so the runner provisions this range itself into
     # .specify/extensions/aee/.runtime when the invoking Python lacks it,
     # together with jsonschema>=4.0 for the evaluator composer that
     # `run_aee.py compose` runs there.
     - name: aee
       required: true
-      version: '>=1.5.0,<2'
+      version: '>=1.6.0,<2'
     # Spec Kit extension, not a shell executable. REQUIRED companion:
     # AEE is one evaluator among many by design, and its results are
     # composed through the common evaluator extension so every

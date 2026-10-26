@@ -26,7 +26,20 @@ python .specify/extensions/aee/scripts/python/run_aee.py assess --input claims.j
 ```
 
 The printed JSON lists `assessment`, `evaluator_result`, `ledger`,
-`aee_exit_code`, and — after a ledgered assess — `ledger_verification`, the
+`aee_exit_code`, and `lane_pair` — the two lanes shown as a pair
+alongside the headline, in one line (`display`): lane 1 is what the
+machine checks proved, lane 2 is where human review and acceptance
+stand (`open`, with the recorded reasons, or `complete`), and the
+headline stays cautious until both are done. When the assessment
+records stage events, the pair also carries `acceptance_basis`: the
+basis each recorded act stands on — a test verdict (the frozen
+requirement tests passed, recorded by the tool) or a human act (a
+named person recorded an explanation, acceptance, or digestion).
+Acceptance is not a human act by default; human acts are the
+reserved cases. A lane-1 `pass` under
+an `iterate` headline means the machine checks passed while people
+are still reviewing; it is not a contradiction. The printed JSON
+also lists — after a ledgered assess — `ledger_verification`, the
 runner's own post-append verification of the ledger chain (`valid`, `entries`,
 `head_hash`, `errors`; see "Verify the ledger" below). The assessment's
 `metadata` carries `engine_version` (stamped by the engine) and
@@ -95,7 +108,19 @@ structured observed evidence from ordinary prose.
 python .specify/extensions/aee/scripts/python/run_aee.py verify
 python .specify/extensions/aee/scripts/python/run_aee.py gate --input "<assessment-path-from-first-command>"
 python .specify/extensions/aee/scripts/python/run_aee.py gate --latest after_specify
+python .specify/extensions/aee/scripts/python/run_aee.py gate --input "<assessment-path-from-first-command>" --require-lane1-pass
 ```
+
+`gate --require-lane1-pass` asks a narrower question than the plain
+gate: did lane 1 — the machine checks — pass on its own facts,
+whatever lane 2 (human review and acceptance) still has open? The
+runner forwards the option to the engine and preserves its exit
+codes exactly: 0 when lane 1 passes, 1 when lane 1 is in the
+`iterate` family, and 2 when the engine blocks or refuses on
+integrity grounds (for example, a lane-1 outcome recorded in the
+file that the recorded facts do not support). Without the option,
+the gate applies the headline outcome, which stays cautious until
+both lanes are done.
 
 Replace the angle-bracket placeholder with the actual rich assessment path.
 `gate --latest <phase>` gates the assessment named by the pointer `assess`

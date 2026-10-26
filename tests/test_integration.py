@@ -31,7 +31,8 @@ def test_manifest_uses_supported_dependency_metadata() -> None:
         "token-router",
         "ollama",
     }
-    assert "1.5.0" in SpecifierSet(tools["aee"]["version"])
+    assert "1.6.0" in SpecifierSet(tools["aee"]["version"])
+    assert "1.5.0" not in SpecifierSet(tools["aee"]["version"])  # Spec 006 floor
     assert "1.4.0" not in SpecifierSet(tools["aee"]["version"])  # Spec 004 P5-E1 floor
     assert "1.0.2" not in SpecifierSet(tools["aee"]["version"])
     for group in ("commands", "templates", "scripts", "config"):

@@ -9,7 +9,7 @@ These are installed releases, not unreleased copies of this repository's code.
 | --- | --- | --- |
 | Spec Kit | PyPI `specify-cli`; CLI `specify` | Scaffolds project templates and installs extensions |
 | Python engine | PyPI `applied-epistemic-engineering`; import/CLI `aee` | Usable standalone; no required runtime dependencies, Spec Kit, or evaluator extension |
-| AEE adapter | GitHub `electrohire/spec-kit-aee`; extension ID `aee` | Requires Python >=3.11, Spec Kit >=1.0.0,<2, engine >=1.5.0,<2 and evaluator >=1.0.0,<2; provisions engine, `jsonschema>=4.0`, and pinned evaluator 1.1.2 on first use |
+| AEE adapter | GitHub `electrohire/spec-kit-aee`; extension ID `aee` | Requires Python >=3.11, Spec Kit >=1.0.0,<2, engine >=1.6.0,<2 and evaluator >=1.0.0,<2; provisions engine, `jsonschema>=4.0`, and pinned evaluator 1.1.2 on first use |
 | Evaluator | GitHub `electrohire/spec-kit-evaluator`; extension ID `evaluator` | Shared schema/composition, not an engine; standalone Python composer needs `jsonschema>=4.0`, Bash composer needs `jq`, PowerShell composer has no extra package dependency |
 
 `rtk`, `headroom`, `token-router`, and `ollama` are optional routing/token-economy
@@ -53,7 +53,7 @@ refresh a previously provisioned private runtime to the current compatible engin
 
 ```bash
 # macOS/Linux; on Windows use .runtime/venv/Scripts/python.exe below instead
-.specify/extensions/aee/.runtime/venv/bin/python -m pip install --upgrade 'applied-epistemic-engineering>=1.5.0,<2' 'jsonschema>=4.0'
+.specify/extensions/aee/.runtime/venv/bin/python -m pip install --upgrade 'applied-epistemic-engineering>=1.6.0,<2' 'jsonschema>=4.0'
 ```
 
 Do not commit `.runtime`, local assessments, ledgers, caches, or credentials.

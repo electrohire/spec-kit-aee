@@ -2,8 +2,40 @@
 
 All notable changes follow Semantic Versioning.
 
-## Unreleased
+## 1.6.0 - 2026-10-20
 
+- Assessments now show the two lanes as a pair (specs/006-lane-outcomes).
+  The runner's `assess` JSON gains a `lane_pair` block with a one-line
+  reading such as `headline: iterate — lane 1: pass, lane 2: open
+  (4 draft claim(s); 4 claim(s) below stage 'explained')`. Lane 1 is
+  what the machine checks proved; lane 2 is where human review and
+  acceptance stand; the headline stays cautious until both are done.
+  Before this change the headline was the only reading shown, so work
+  the machine checks had passed still read as a lone `iterate`
+  whenever lane 2 was open.
+- The lane pair also shows the basis of acceptance (Spec 006
+  amendment, autonomous-execution doctrine v2). When an assessment
+  records stage events, `lane_pair.acceptance_basis` lists each
+  recorded act with the basis it stands on — a test verdict (the
+  frozen requirement tests passed, recorded by the tool) or a human
+  act (a named person recorded an explanation, acceptance, or
+  digestion) — with a count line. Acceptance is not presented as a
+  human act by default; human acts are the reserved cases. An
+  assessment recording no acts carries `acceptance_basis: null`.
+- `gate` gains `--require-lane1-pass`: the runner forwards the option
+  to the engine's gate, which exits 0 when lane 1 passes on its own
+  facts, 1 when lane 1 needs recovery work, and 2 when it blocks or
+  refuses on integrity grounds. Without the option the gate applies
+  the headline outcome exactly as before.
+- The engine requirement moves to `applied-epistemic-engineering
+  >=1.6.0,<2`. Engine 1.6.0 is the first release whose lane-1 outcome
+  is worked out from lane-1 facts alone instead of copying the
+  headline (methodology 2.1), and the first whose gate offers the
+  lane-1 option above. The runner refuses older engines with exit 2,
+  as before.
+- `scripts/check_install.py` now checks the lane pair end to end: the
+  installed `assess` summary must carry a `lane_pair` that matches
+  the installed assessment's own recorded lanes.
 - Document installation by name after one-time publisher catalog registration;
   clarify that the current community catalog remains discovery-only and that
   AEE provisions runtime dependencies on first use.

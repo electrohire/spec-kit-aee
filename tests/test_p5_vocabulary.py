@@ -29,7 +29,7 @@ from pathlib import Path
 
 args = sys.argv[1:]
 if args == ["--version"]:
-    print(os.environ.get("AEE_STUB_VERSION_TEXT", "aee 1.5.0"))
+    print(os.environ.get("AEE_STUB_VERSION_TEXT", "aee 1.6.0"))
     sys.exit(0)
 command = args[0] if args else ""
 
@@ -45,7 +45,7 @@ if command == "assess":
             "project": "stub-project",
             "phase": flag("--phase") or "after_plan",
             "outcome": "iterate",
-            "methodology_version": "2.0",
+            "methodology_version": "2.1",
             "claims": [],
             "reported_statuses": {"A": "partially_supported"},
             "stage_caps": [{
@@ -62,7 +62,7 @@ if command == "assess":
                 "lane_2": {"label": "human acceptance", "bundle": {"stage_counts": {"checked": 1}}},
             },
             "not_understood": ["A: what remains not understood"],
-            "metadata": {"engine_version": "1.5.0"},
+            "metadata": {"engine_version": "1.6.0"},
         }
     else:
         payload = {
@@ -84,7 +84,7 @@ requires_posix_stub = pytest.mark.skipif(
 )
 
 
-def _env(tmp_path: Path, version: str = "1.5.0", shape: str = "realigned") -> dict:
+def _env(tmp_path: Path, version: str = "1.6.0", shape: str = "realigned") -> dict:
     bin_dir = tmp_path / "stub-bin"
     bin_dir.mkdir(exist_ok=True)
     stub = bin_dir / "aee"
@@ -128,7 +128,7 @@ def test_pre_realignment_engine_is_refused_cleanly(tmp_path: Path) -> None:
     assert completed.returncode == 2
     assert "Traceback" not in completed.stderr
     assert "1.4.0" in completed.stderr
-    assert ">=1.5.0,<2" in completed.stderr
+    assert ">=1.6.0,<2" in completed.stderr
 
 
 @requires_posix_stub
@@ -142,7 +142,7 @@ def test_realigned_engine_runs_and_display_matches_assessment(tmp_path: Path) ->
     # P5-E2 / acceptance: the display is the assessment's own
     # vocabulary, value for value.
     assert display["outcome"] == assessment["outcome"]
-    assert display["methodology_version"] == "2.0"
+    assert display["methodology_version"] == "2.1"
     assert display["reported_statuses"] == assessment["reported_statuses"]
     assert display["stage_caps"] == assessment["stage_caps"]
     assert display["lanes"]["lane_1"] == assessment["lanes"]["lane_1"]
@@ -167,7 +167,7 @@ def test_floor_constants_agree_across_the_three_places() -> None:
     runner = (ROOT / "scripts" / "python" / "run_aee.py").read_text(encoding="utf-8")
     yml = (ROOT / "extension.yml").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "_AEE_VERSION_MIN = (1, 5, 0)" in runner
-    assert 'REQUIRED_AEE_VERSION = ">=1.5.0,<2"' in runner
-    assert "'>=1.5.0,<2'" in yml or '\'>=1.5.0,<2\'' in yml or ">=1.5.0,<2" in yml
-    assert "applied-epistemic-engineering>=1.5.0,<2" in readme
+    assert "_AEE_VERSION_MIN = (1, 6, 0)" in runner
+    assert 'REQUIRED_AEE_VERSION = ">=1.6.0,<2"' in runner
+    assert "'>=1.6.0,<2'" in yml or '\'>=1.6.0,<2\'' in yml or ">=1.6.0,<2" in yml
+    assert "applied-epistemic-engineering>=1.6.0,<2" in readme

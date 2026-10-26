@@ -60,7 +60,7 @@ from pathlib import Path
 
 args = sys.argv[1:]
 if args == ["--version"]:
-    print("aee 1.5.0")
+    print("aee 1.6.0")
     sys.exit(0)
 if os.environ.get("AEE_STUB_BEHAVIOR") == "sleep":
     time.sleep(30)
