@@ -181,6 +181,7 @@ its probe is still used.
 from __future__ import annotations
 
 import argparse
+import base64
 import functools
 import hashlib
 import http.server
@@ -195,9 +196,144 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Verified writes (fleet standard, 2026-10-28), embedded because this
+# script ships as a single declared file (extension.yml): temp file
+# in the destination directory + fsync + atomic rename + read-back
+# hash verify, bounded retries including a fresh subprocess (run
+# from an inline bootstrap, so no sibling module is needed), and
+# SafeWriteError when every attempt fails. A 0-byte or partial file
+# never stands as a successful write. SafeWriteError inherits from
+# ValueError as well as RuntimeError so main's refusal contract
+# (ValueError -> "refused: ...", exit 2) covers write failures with
+# no traceback.
+# ---------------------------------------------------------------------------
+
+
+class SafeWriteError(RuntimeError, ValueError):
+    """Every verified-write attempt failed; nothing was committed."""
+
+
+_CHILD_BOOTSTRAP = (
+    "import base64, os, sys, tempfile\n"
+    "data = base64.b64decode(sys.argv[1])\n"
+    "target = sys.argv[2]\n"
+    "directory = os.path.dirname(os.path.abspath(target))\n"
+    "fd, tmp = tempfile.mkstemp(dir=directory, prefix='.vw-', suffix='.tmp')\n"
+    "ok = False\n"
+    "try:\n"
+    "    with os.fdopen(fd, 'wb') as handle:\n"
+    "        handle.write(data); handle.flush(); os.fsync(handle.fileno())\n"
+    "    os.replace(tmp, target)\n"
+    "    with open(target, 'rb') as handle:\n"
+    "        ok = handle.read() == data\n"
+    "except OSError:\n"
+    "    try: os.unlink(tmp)\n"
+    "    except OSError: pass\n"
+    "sys.exit(0 if ok else 1)\n"
+)
+
+
+def _vw_fsync_dir(directory: Path) -> None:
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def _vw_try_write_once(path: Path, data: bytes) -> bool:
+    directory = path.parent
+    tmp_name: str | None = None
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(
+            dir=directory, prefix=".aee-verified-", suffix=".tmp"
+        )
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_name, path)
+        tmp_name = None
+        _vw_fsync_dir(directory)
+        return path.read_bytes() == data
+    except OSError:
+        return False
+    finally:
+        if tmp_name is not None:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+
+
+def _vw_try_child_write(path: Path, data: bytes) -> bool:
+    try:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                _CHILD_BOOTSTRAP,
+                base64.b64encode(data).decode("ascii"),
+                str(path),
+            ],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return completed.returncode == 0
+
+
+def write_bytes_verified(path: Path, data: bytes) -> dict:
+    """Write bytes with the verified-write guarantee (see header).
+
+    Returns {"path", "bytes", "sha256", "via"}; raises ValueError on
+    empty content and SafeWriteError when every attempt fails."""
+    if not data:
+        raise ValueError(f"refusing to write an empty file: {path}")
+    attempts = 0
+    for index in range(3):
+        attempts += 1
+        if _vw_try_write_once(path, data):
+            return {
+                "path": str(path),
+                "bytes": len(data),
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "via": f"local-{index + 1}",
+            }
+        time.sleep(0.25 * (index + 1))
+    for index in range(2):
+        attempts += 1
+        if _vw_try_child_write(path, data):
+            return {
+                "path": str(path),
+                "bytes": len(data),
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "via": f"child-{index + 1}",
+            }
+        time.sleep(0.5)
+    raise SafeWriteError(
+        f"verified write failed after {attempts} attempts: {path} "
+        f"({len(data)} bytes, sha256 {hashlib.sha256(data).hexdigest()})"
+    )
+
+
+def write_text_verified(path: Path, text: str) -> dict:
+    return write_bytes_verified(path, text.encode("utf-8"))
+
 
 DEFAULT_TIMEOUT_SECONDS = 600.0
 
@@ -597,7 +733,10 @@ def _download_evaluator_archive(target: Path, timeout: float) -> None:
             f"{EVALUATOR_ARCHIVE_URL} has SHA-256 {digest}, expected "
             f"{EVALUATOR_ARCHIVE_SHA256}; refusing to install it"
         )
-    target.write_bytes(data)
+    # The digest above proves the download; the write itself goes
+    # through the verified writer (fleet standard, 2026-10-28) so a
+    # torn archive on disk cannot be installed as genuine.
+    write_bytes_verified(target, data)
 
 
 def _install_evaluator_extension(root: Path, timeout: float) -> None:
@@ -895,9 +1034,11 @@ def _draft_claims(root: Path, args: argparse.Namespace) -> int:
     bundle = json.loads(bundle_text)
     drafted = bundle.get("claims", [])
     before = _snapshot(output)
-    output.write_text(
+    # Verified write (fleet standard, 2026-10-28): the claims bundle
+    # is a durable record; failure raises and fails the run closed.
+    write_text_verified(
+        output,
         bundle_text if bundle_text.endswith("\n") else bundle_text + "\n",
-        encoding="utf-8",
     )
     todo_count = sum(
         1
@@ -960,7 +1101,10 @@ def _stamp_and_ledger(
         metadata["extension_version"] = version
     if ledger is not None:
         metadata["ledger"] = {"mode": "custom", "path": ledger.as_posix()}
-    assessment.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    # Verified write (fleet standard, 2026-10-28): the stamp lands
+    # before the ledger append reads the assessment back; a torn
+    # stamp would poison the chain, so failure fails closed here.
+    write_text_verified(assessment, json.dumps(value, indent=2) + "\n")
     verification: dict | None = None
     if ledger is not None:
         assert ledger_class is not None
@@ -1693,7 +1837,12 @@ def _write_latest_pointer(root: Path, phase: str, assessment_rel: str) -> str:
     pointer = _safe_output(
         root, Path(f".specify/extensions/aee/assessments/latest-{phase}.json")
     )
-    pointer.write_text(
+    # Verified write (fleet standard, 2026-10-28): gate --latest
+    # resolves this pointer; a torn pointer must fail the assess
+    # run closed rather than name a record that was never durably
+    # recorded.
+    write_text_verified(
+        pointer,
         json.dumps(
             {
                 "assessment": assessment_rel,
@@ -1703,7 +1852,6 @@ def _write_latest_pointer(root: Path, phase: str, assessment_rel: str) -> str:
             indent=2,
         )
         + "\n",
-        encoding="utf-8",
     )
     return pointer.relative_to(root).as_posix()
 
