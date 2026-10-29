@@ -2,6 +2,43 @@
 
 All notable changes follow Semantic Versioning.
 
+## 1.7.0 - 2026-10-29
+
+- Add the message-security component (specs/007-message-security):
+  everything a system reads is data, and only principals instruct.
+  It ships an authority-surface template
+  (`templates/message-security-authority-surface.md`) — the principal
+  record a project completes per spec: who may instruct the system,
+  through which channels, which actions and destinations are
+  authorized — wired into the `speckit.aee.assess` command as a gap
+  check and into the new command below.
+- The planted-injection battery becomes an assessment gate: 106
+  fixtures (56 planted instructions in real carrier text, 50
+  legitimate controls) vendored under
+  `assets/message-security/`, the deterministic screener (structural
+  layer L1, epistemic layer L2) at
+  `scripts/python/message_security_screen.py`, and a gate runner at
+  `scripts/python/message_security_battery.py`. Bars, stated in the
+  runner: L2 challenges at least 95% of injections (measured 55 of
+  56) and zero legitimate controls (measured 0 of 50); notes
+  (29 of 50 controls) are reported, never gated. Exit codes 0 pass,
+  1 bar not met, 2 error as a clean refusal.
+- The challenge record format is standardized:
+  `templates/message-security-challenge-record.schema.json` (JSON
+  Schema) plus a worked example record. Fields: span hash, source
+  class and id, the claim as extracted, the check that fired, the
+  verdict (`note`/`challenge`), the action taken, and the timestamp.
+  Records are append-only, one JSON object per line; the battery
+  runner emits them with `--records-output`.
+- New command `speckit.aee.message-security` (eleven commands
+  total): checks the active spec's authority surface, runs the
+  battery gate, and reports missed fixtures and challenged controls
+  by name. `scripts/check_install.py` exercises the installed
+  battery gate end to end.
+- The gate measures the deterministic screener offline; it does not
+  measure whether a model in context would refuse a planted
+  instruction, and the changelog entry claims nothing more.
+
 ## 1.6.0 - 2026-10-20
 
 - Assessments now show the two lanes as a pair (specs/006-lane-outcomes).

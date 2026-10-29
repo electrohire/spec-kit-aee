@@ -80,7 +80,7 @@ for the tested versions and exact dependency timing.
 
 Ask your agent: “Set up AEE for this Spec Kit project, assess the spec's explicit
 claims, and explain missing evidence.” After setup, it reads the installed
-operation `SKILL.md` files and runs the commands for you. Spec Kit renders ten
+operation `SKILL.md` files and runs the commands for you. Spec Kit renders eleven
 AEE skills and four evaluator skills into the selected integration's directory
 (for example `.agents/skills/` for Codex or `.github/skills/` for Copilot).
 Reload the agent session if newly installed skills are not discovered yet.
@@ -104,7 +104,7 @@ commands belong in your coding agent's chat, not in PowerShell or Bash.
 | Python | `python>=3.11` | Runs the adapter and engine |
 | AEE engine | `applied-epistemic-engineering>=1.6.0,<2`, exposes `aee` | [electrohire/applied-epistemic-engineering](https://github.com/electrohire/applied-epistemic-engineering): deterministic assessment, graph, ledger, and gaps; installed automatically by the runner when missing |
 | Evaluator extension (required companion) | extension ID `evaluator`, version `>=1.0.0,<2` | [electrohire/spec-kit-evaluator](https://github.com/electrohire/spec-kit-evaluator): the common evaluator this adapter's results are composed through — composition, reporting, and routing over the engine-produced result; installed automatically by `assess` when missing |
-| This adapter | extension ID `aee` | [electrohire/spec-kit-aee](https://github.com/electrohire/spec-kit-aee): ten agent commands and optional lifecycle hooks |
+| This adapter | extension ID `aee` | [electrohire/spec-kit-aee](https://github.com/electrohire/spec-kit-aee): eleven agent commands and optional lifecycle hooks |
 
 The engine needs at least 1.6.0: the first engine whose lane-1 outcome is worked out from lane-1 facts alone instead of copying the headline (methodology 2.1), and whose gate can require a lane-1 pass on its own. The runner enforces the range itself by checking `aee --version` against `>=1.6.0,<2`. The Evaluator Contract result is produced by the engine itself, and the evaluator extension is a **required companion** to this adapter: AEE is one evaluator among many by design, and its results are composed through that common evaluator so every evaluator's output is handled the same way. The evaluator extension is a Spec Kit extension, **not** a PyPI package or shell executable.
 
@@ -146,7 +146,7 @@ claims before they propagate; no guaranteed or measured hallucination-reduction
 rate is claimed. See the engine's
 [use-case and evaluation guide](https://applied-epistemic-engineering.readthedocs.io/en/latest/use-cases/).
 
-The [step-by-step walkthrough](docs/usage.md) covers all ten commands, expected
+The [step-by-step walkthrough](docs/usage.md) covers all eleven commands, expected
 exit codes, output files, gap evidence format, and recovery. Start with the
 unsupported-claim template; replace its example requirement with your own and add
 real evidence only after inspecting it. The published template ships with
@@ -219,6 +219,9 @@ Assessments produced through the runner carry `metadata.extension_version` (the 
 | `speckit.aee.gaps` | Generate or update the gap register from a verification matrix and test evidence |
 | `speckit.aee.route-evidence` | Route oversized logs and sources into raw evidence slices for AEE gates |
 | `speckit.aee.report-savings` | Report measured RTK and Headroom token savings, never estimated |
+| `speckit.aee.message-security` | Check a spec's authority surface and run the planted-injection battery gate (deterministic screener, no engine or model calls) |
+
+The message-security component is documented in [message security](docs/message-security.md): the authority-surface section every spec for a system that acts on read content must carry, the planted-injection battery gate and its bars, and the challenge record format.
 
 Compose AEE with other evaluators using `python .specify/extensions/aee/scripts/python/run_aee.py compose --phase <phase>`. It runs the evaluator's Python composer with dependencies AEE provisions. `/speckit.evaluator.compose` gives the same composition, but its Bash variant needs `jq` and its Python variant needs `jsonschema` in the project's or PATH's Python, which AEE does not install. Render the result with `/speckit.evaluator.report`, or use `/speckit.evaluator.route` for the next-phase model recommendation. Invocation separators vary by integration; Spec Kit renders the installed command files appropriately.
 
@@ -232,6 +235,7 @@ Compose AEE with other evaluators using `python .specify/extensions/aee/scripts/
 ├── evidence/route notes with file paths, line ranges, and backend used
 ├── reports/measured token-savings reports
 ├── telemetry/shell-calls.jsonl
+├── message-security/battery-report.json and challenge-records.jsonl (when the battery gate is run with output paths)
 └── ledger/epistemic-ledger.jsonl
 
 .specify/extensions/evaluator/results/

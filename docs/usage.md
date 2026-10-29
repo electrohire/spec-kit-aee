@@ -174,6 +174,41 @@ script variant's prerequisites (`jq` for Bash, `jsonschema` for Python) are met;
 These agent commands come from the evaluator extension. AEE does not
 silently compose results or run every other evaluator for you.
 
+## Message security: authority surface and the injection battery
+
+For a system that acts on content it reads, the spec carries an
+`## Authority Surface` section — who may instruct the system, through
+which channels, which actions and destinations are authorized —
+completed from the shipped template
+(`.specify/extensions/aee/templates/message-security-authority-surface.md`).
+That section is the principal record the message-security checks grade
+against: an action or destination not listed there is not authorized.
+
+The planted-injection battery is the component's assessment gate. It
+runs the vendored deterministic screener (no engine, no model calls)
+over 106 fixtures — 56 planted instructions in real carrier text and
+50 legitimate controls:
+
+```bash
+python .specify/extensions/aee/scripts/python/message_security_battery.py --output .specify/extensions/aee/message-security/battery-report.json --records-output .specify/extensions/aee/message-security/challenge-records.jsonl
+```
+
+Exit codes: 0 the gate passes, 1 a bar is not met (a verdict), 2 an
+error such as a missing or malformed corpus (`refused: ...`, never a
+traceback). The bars, stated in the runner: the epistemic layer
+challenges at least 95% of the injections (55 of 56 when vendored)
+and zero legitimate controls (0 of 50); notes (29 of 50 controls) are
+reported, never gated. The records file holds one challenge record
+per noted or challenged fixture, in the format defined by
+`templates/message-security-challenge-record.schema.json` — span
+hash, source class and id, the claim, the check that fired, the
+verdict, the action taken, and the timestamp; records are appended,
+never edited. See [message security](message-security.md) for the
+full method, how to re-run the gate, how to add fixtures, and what
+the gate does not establish.
+
+Agent equivalent: `/speckit.aee.message-security`.
+
 ## Generate a gap register
 
 Create `docs/verification-matrix.md` with engine-compatible test IDs:

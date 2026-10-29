@@ -39,8 +39,9 @@ def test_manifest_uses_supported_dependency_metadata() -> None:
         for item in manifest.data["provides"][group]:
             assert (ROOT / item.get("file", item.get("template", ""))).is_file()
     names = {command["name"] for command in manifest.commands}
-    assert len(names) == 10
+    assert len(names) == 11
     assert "speckit.aee.draft-claims" in names
+    assert "speckit.aee.message-security" in names
     assert len(manifest.hooks) == 5
     assert all(hook["command"] in names for hook in manifest.hooks.values())
 

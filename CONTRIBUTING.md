@@ -107,7 +107,7 @@ be filed. Release checklist:
    Requirements, and Proposed Catalog Entry (#4642 failed on a missing
    section). Version, download URL, and Proposed Catalog Entry must name the
    same version (#4447 failed on a mismatch). Commands and hooks counts must
-   match `extension.yml` (currently 10 commands, 5 hooks). List the engine
+   match `extension.yml` (currently 11 commands, 5 hooks). List the engine
    and Evaluator under Required Tools with their versions, give truthful
    testing details, and name the AI tool used.
 6. **Wait for triage.** Do not open a pull request against

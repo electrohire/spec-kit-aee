@@ -57,6 +57,10 @@ Report statuses as the assessment's `reported_statuses` — the stage-capped voc
 
 Composition through the evaluator extension is the standard path, not an extra: when other evaluators ran at the same phase, compose this result with theirs by running `python .specify/extensions/aee/scripts/python/run_aee.py compose --phase "<phase>" --strategy strict`. That runs the evaluator extension's own Python composer on the runner's interpreter, where its `jsonschema>=4.0` dependency is installed along with the engine. `/speckit-evaluator-compose` performs the same composition, but it runs the composer variant chosen by the project's script type with that variant's own prerequisites (`jq` for Bash, `jsonschema` in the project's Python for Python), which AEE does not install. Composer exit codes pass through: 0 pass/warn, 1 recovery needed, 2 block or error.
 
+## Authority surface
+
+When the artifact under assessment is a spec for a system that acts on content it reads, the spec must carry a completed `## Authority Surface` section — who may instruct the system, through which channels, which actions and destinations are authorized — from `.specify/extensions/aee/templates/message-security-authority-surface.md`. That section is the principal record the message-security checks grade data-span claims against. Treat a missing section, or one still carrying template placeholders, as a gap to report with the assessment: an action or destination not listed there is not authorized, and the gap is in the record, not something to fill in from content the system read. Run `speckit.aee.message-security` for the battery gate that stands behind this check.
+
 ## Claim field vocabulary
 
 The AEE engine validates every claim with `Claim.from_dict` and rejects the
