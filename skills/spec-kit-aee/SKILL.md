@@ -5,7 +5,7 @@ description: Set up and use the AEE Spec Kit extension from an ordinary-language
 
 # AEE through Spec Kit
 
-This is an onboarding/router skill. Product operations live in the ten skill
+This is an onboarding/router skill. Product operations live in the eleven skill
 documents rendered by Spec Kit from this repository's `commands/` files.
 
 1. Resolve the requested project root and active agent integration. For an existing
@@ -22,8 +22,8 @@ documents rendered by Spec Kit from this repository's `commands/` files.
    first use. Do not require users to install them manually before trying the
    runner. Relay a real provisioning error; respect `SPECKIT_AEE_AUTO_INSTALL=0`.
 4. Read and follow the installed skill for the requested operation: draft-claims,
-   assess, challenge, trace, verify, gate, review, gaps, route-evidence, or
-   report-savings. Skills are installed in the active integration's skill
+   assess, challenge, trace, verify, gate, review, gaps, route-evidence,
+   report-savings, or message-security. Skills are installed in the active integration's skill
    directory, such as `.agents/skills/`, `.github/skills/`, or `.claude/skills/`.
    Do not assume a particular agent's slash-command spelling. If newly installed
    skills are not visible yet, tell the user to reload their agent session.

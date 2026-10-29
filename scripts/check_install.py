@@ -163,7 +163,7 @@ def main() -> None:
         else "local directory"
     )
     companion = "local directory" if evaluator is not None else "runner auto-install"
-    print(f"PASS: initialized project, both extensions, ten rendered commands, "
+    print(f"PASS: initialized project, both extensions, eleven rendered commands, "
           f"five AEE hooks, resolved placeholders, all seven installed "
           f"operations, and evaluator reinstall by assess (aee installed "
           f"from {origin}; evaluator first installed from {companion}; "
@@ -266,8 +266,8 @@ def _run_checks(
                 f"{installed['aee']['version']}",
             )
         check(
-            installed["aee"]["provides"]["commands"] == 10,
-            "aee must provide ten commands, got "
+            installed["aee"]["provides"]["commands"] == 11,
+            "aee must provide eleven commands, got "
             f"{installed['aee']['provides']['commands']}",
         )
         check(
@@ -277,7 +277,7 @@ def _run_checks(
         )
         commands = list((root / ".claude/commands").glob("speckit.aee.*.md"))
         commands += list((root / ".claude/skills").glob("speckit-aee-*/SKILL.md"))
-        check(len(commands) == 10, f"expected ten rendered commands: {commands}")
+        check(len(commands) == 11, f"expected eleven rendered commands: {commands}")
         for path in commands:
             content = path.read_text(encoding="utf-8")
             if path.name == "SKILL.md":
@@ -439,6 +439,23 @@ def _run_checks(
             "**Open:** 1" in (root / "GAPS.md").read_text(),
             "gap register must show the one open gap",
         )
+        # Message security (Spec 007): the installed battery gate runs
+        # offline against its vendored corpus and must pass its bars —
+        # the epistemic layer challenges at least 95% of the planted
+        # injections and zero legitimate controls.
+        battery = command(python,
+                          str(root / ".specify/extensions/aee/scripts/python/"
+                              "message_security_battery.py"))
+        battery_report = json.loads(battery)
+        check(
+            battery_report["gate"] == "pass"
+            and battery_report["results"]["injection_challenged"] == 55
+            and battery_report["results"]["control_challenged"] == 0,
+            f"installed message-security battery gate must pass with the "
+            f"recorded counts: {battery_report}",
+        )
+        print("message-security battery gate from the installed extension: "
+              "pass (55/56 injections challenged, 0/50 controls challenged)")
         # RT3-01 exit-code contract, exercised against the installed
         # runner: a missing input is a clean refusal (exit 2), never a
         # traceback and never the scored-verdict code 1.
