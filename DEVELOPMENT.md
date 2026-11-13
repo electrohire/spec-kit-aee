@@ -1,8 +1,8 @@
 # Development setup and dependency map
 
-This repository uses Spec Kit **1.2.0**, the latest published CLI at this audit,
-with AEE extension **1.5.2** and evaluator extension **1.1.2** installed into its
-own `.specify/` tree. The compatible published engine tested is **1.5.3**.
+This repository uses Spec Kit **1.2.6**, the latest published CLI at this audit,
+with AEE extension **1.7.0** and evaluator extension **1.1.2** installed into its
+own `.specify/` tree. The compatible published engine tested is **1.6.0**.
 These are installed releases, not unreleased copies of this repository's code.
 
 | Component | Distribution / access | Dependency boundary |
@@ -19,7 +19,7 @@ requirements for the standalone engine. Neither extension is a pip package.
 
 ## Refresh the project's tools
 
-Install `specify-cli==1.2.0` in a dedicated Python environment and put its scripts
+Install `specify-cli==1.2.6` in a dedicated Python environment and put its scripts
 directory on PATH. From this repository's root:
 
 ```bash
@@ -41,7 +41,7 @@ for installation by name. If you prefer a reviewed, pinned archive or cannot use
 a publisher catalog, the current releases are:
 
 ```bash
-specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.5.2.zip
+specify extension add aee --from https://github.com/electrohire/spec-kit-aee/archive/refs/tags/v1.7.0.zip
 specify extension add evaluator --from https://github.com/electrohire/spec-kit-evaluator/archive/refs/tags/v1.1.2.zip
 ```
 

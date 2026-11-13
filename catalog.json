@@ -55,7 +55,7 @@
         ]
       },
       "provides": {
-        "commands": 10,
+        "commands": 11,
         "hooks": 5
       },
       "tags": [
