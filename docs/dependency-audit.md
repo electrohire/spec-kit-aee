@@ -70,7 +70,7 @@ python scripts/check_install.py --evaluator-dir ../spec-kit-evaluator
 ```
 
 19 local tests pass. Installation smoke initializes a clean project, installs both
-real extensions, verifies six rendered AEE commands, five hooks and resolved
+real extensions, verifies eleven rendered AEE commands, five hooks and resolved
 cross-extension placeholders, then executes all six adapter operations. Tests
 also verify recovery outcomes, source preservation, tampered-ledger rejection,
 and gap generation from empty and passing synthetic test fixtures.

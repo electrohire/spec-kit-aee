@@ -3,12 +3,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
+      - 'commands/**'
+      - 'templates/**'
       - 'scripts/**'
       - 'skills/**'
-      - 'references/**'
-      - 'pyproject.toml'
       - 'extension.yml'
+      - 'catalog.json'
       - 'requirements/**'
       - '.github/workflows/benchmark-candidate.yml'
   workflow_dispatch:
