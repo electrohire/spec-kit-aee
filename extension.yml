@@ -116,6 +116,9 @@ provides:
     - name: message-security-challenge-record-schema
       file: templates/message-security-challenge-record.schema.json
       description: JSON Schema for the append-only message-security challenge record format
+    - name: board-kernel-definitions
+      file: templates/board-kernel-definitions.json
+      description: The Agent Board kernel (transition table and guard definitions) pinned by hash to the canonical form in the engine repo; pinning is the pilot mechanism until generation replaces it
   config:
     - name: aee-config.yml
       template: templates/aee-config.template.yml
