@@ -1,0 +1,184 @@
+{
+  "amendable_fields": [
+    "assignee_instance",
+    "assignee_kind",
+    "body",
+    "depends_on",
+    "wait"
+  ],
+  "execution_states": [
+    "none",
+    "queued",
+    "running",
+    "wrapper_complete",
+    "failed_transport"
+  ],
+  "note_parts": [
+    "Current position",
+    "Next action",
+    "Records that matter",
+    "What would change the plan"
+  ],
+  "row_update_change_fields": [
+    "blocker_note",
+    "execution_state",
+    "status",
+    "wait"
+  ],
+  "schema": "aee-board-kernel/1",
+  "statuses": [
+    "proposed",
+    "planned",
+    "ready",
+    "in_progress",
+    "blocked",
+    "in_review",
+    "done",
+    "withdrawn",
+    "superseded"
+  ],
+  "terminal_statuses": [
+    "done",
+    "superseded",
+    "withdrawn"
+  ],
+  "transitions": [
+    {
+      "actor": "generator (planner-authorized)",
+      "from": null,
+      "guard": "genesis records spec_hash; the row traces to a line of the frozen artifact",
+      "to": "planned"
+    },
+    {
+      "actor": "planner",
+      "from": null,
+      "guard": "via spec draft or amendment event with reason",
+      "to": "proposed"
+    },
+    {
+      "actor": "holder (same or reassigned by planner)",
+      "from": "blocked",
+      "guard": "a wake event exists for the registered wait, or the planner overrides with a recorded reason; the wait is consumed",
+      "to": "in_progress"
+    },
+    {
+      "actor": "planner",
+      "from": "blocked",
+      "guard": "pointer to the replacing row recorded",
+      "to": "superseded"
+    },
+    {
+      "actor": "planner",
+      "from": "blocked",
+      "guard": "reason recorded",
+      "to": "withdrawn"
+    },
+    {
+      "actor": "holder",
+      "from": "in_progress",
+      "guard": "a structured wait is registered and the resumption note carries its four parts (FR-K3)",
+      "to": "blocked"
+    },
+    {
+      "actor": "holder",
+      "from": "in_progress",
+      "guard": "work product references recorded in the transition event",
+      "to": "in_review"
+    },
+    {
+      "actor": "planner",
+      "from": "in_progress",
+      "guard": "pointer to the replacing row recorded",
+      "to": "superseded"
+    },
+    {
+      "actor": "planner",
+      "from": "in_progress",
+      "guard": "reason recorded",
+      "to": "withdrawn"
+    },
+    {
+      "actor": "reviewer or planner",
+      "from": "in_review",
+      "guard": "verdict_ref attached by a verdict-attachment event and favorable for its class (FR-K1); the transition event carries the full verdict_ref",
+      "to": "done"
+    },
+    {
+      "actor": "reviewer",
+      "from": "in_review",
+      "guard": "comment event with a record reference, or a verdict-driven return recording the verdict_ref",
+      "to": "in_progress"
+    },
+    {
+      "actor": "planner",
+      "from": "in_review",
+      "guard": "pointer to the replacing row recorded",
+      "to": "superseded"
+    },
+    {
+      "actor": "planner",
+      "from": "in_review",
+      "guard": "reason recorded",
+      "to": "withdrawn"
+    },
+    {
+      "actor": "planner only",
+      "from": "planned",
+      "guard": "all depends_on rows are done",
+      "to": "ready"
+    },
+    {
+      "actor": "planner",
+      "from": "planned",
+      "guard": "pointer to the replacing row recorded",
+      "to": "superseded"
+    },
+    {
+      "actor": "planner",
+      "from": "planned",
+      "guard": "reason recorded",
+      "to": "withdrawn"
+    },
+    {
+      "actor": "planner",
+      "from": "proposed",
+      "guard": "the row's spec artifact is frozen (genesis spec_hash)",
+      "to": "planned"
+    },
+    {
+      "actor": "planner",
+      "from": "proposed",
+      "guard": "pointer to the replacing row recorded",
+      "to": "superseded"
+    },
+    {
+      "actor": "planner",
+      "from": "proposed",
+      "guard": "reason recorded",
+      "to": "withdrawn"
+    },
+    {
+      "actor": "assignee (kind holder or named instance)",
+      "from": "ready",
+      "guard": "single holder; the board's wip_limit is not exceeded",
+      "to": "in_progress"
+    },
+    {
+      "actor": "planner",
+      "from": "ready",
+      "guard": "pointer to the replacing row recorded",
+      "to": "superseded"
+    },
+    {
+      "actor": "planner",
+      "from": "ready",
+      "guard": "reason recorded",
+      "to": "withdrawn"
+    }
+  ],
+  "wait_kinds": [
+    "dependency",
+    "named_event",
+    "external_prose"
+  ]
+}
