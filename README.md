@@ -6,9 +6,21 @@
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15599/badge)](https://www.bestpractices.dev/en/projects/15599)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+![A first AEE run: installing the extension, then assessing a claim that has no evidence yet. The claim stays open, with its score below threshold and the ledger verified.](assets/aee-first-run.png)
+
+**The problem:** AI coding agents fill specs with claims, then grade their own homework. Nothing forces a claim to carry evidence, state its boundary, or say what would prove it wrong, so unsupported claims pass review and surface later as defects.
+
+`spec-kit-aee` is a Spec Kit extension that makes a spec's claims earn their status:
+
+- **Claims, not prose.** It extracts the explicit claims in a spec (requirements, assumptions, hypotheses, decisions, compliance claims) into a challengeable claim graph. Ordinary prose is never silently promoted into evidence.
+- **Every claim is challengeable.** Each claim carries a boundary and a falsification test, and the challenge pass probes atomicity, observability, boundaries, dependencies, contradictions, and evidence independence.
+- **Evidence is scored, and confidence is capped.** Evidence is weighted, and a claim's confidence can never exceed its weakest supporting claim.
+- **Unsupported means unsupported.** A claim without inspectable evidence stays open and gets a bounded recovery action, not a pass. Contradictions are preserved, never averaged away.
+- **Results a pipeline can use.** Every assessment emits a shared Evaluator Contract result and a CI gate with plain exit codes, and appends to a tamper-evident SHA-256 ledger.
+
 OpenSSF Best Practices Passing criteria: 100% met (self-assessment, verified 2026-10-16).
 
-`spec-kit-aee` applies evidence-centered claim engineering to Spec-Driven Development. It turns explicit requirements, assumptions, hypotheses, decisions, and compliance claims into a challengeable claim graph; distinguishes observations from assertions; preserves contradictions; propagates weakest-link uncertainty; proposes bounded recovery work; and emits results that conform to ElectroHire's [Evaluator Contract](https://github.com/electrohire/spec-kit-evaluator).
+In the engine's terms, `spec-kit-aee` applies evidence-centered claim engineering to Spec-Driven Development: it distinguishes observations from assertions, propagates weakest-link uncertainty, and emits results that conform to ElectroHire's [Evaluator Contract](https://github.com/electrohire/spec-kit-evaluator).
 
 The implementation is an original ElectroHire design split into two deliberate layers:
 
